@@ -1,0 +1,16 @@
+{
+  "name": "@sight-cache/collector",
+  "version": "0.0.1",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "index.js",
+  "engines": {
+    "node": ">=24.19.0"
+  },
+  "scripts": {
+    "start": "node --env-file=.env index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

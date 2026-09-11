@@ -1,0 +1,128 @@
+import { spawn } from "node:child_process";
+import fs from "node:fs";
+import { mkdir, readFile, unlink } from "node:fs/promises";
+
+const spoolDir = "./frames";
+const captureIntervalSeconds = Number(
+  process.env.CAPTURE_INTERVAL_SECONDS ?? 5,
+);
+
+if (!Number.isFinite(captureIntervalSeconds) || captureIntervalSeconds <= 0) {
+  throw new Error("CAPTURE_INTERVAL_SECONDS must be a positive number");
+}
+
+let shuttingDown = false;
+let forceKillTimer;
+let uploadQueue = Promise.resolve();
+
+await mkdir(spoolDir, { recursive: true });
+
+const uploadFrame = async (filePath, filename) => {
+  const binaryData = await readFile(filePath);
+
+  console.log(`Uploading image ${filename} to API`);
+  const response = await fetch(process.env.API_ENDPOINT, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.BEARER_TOKEN}`,
+      "Content-Type": "image/jpeg",
+      "Content-Length": String(binaryData.length),
+      "X-Filename": filename,
+    },
+    body: binaryData,
+    signal: AbortSignal.timeout(30_000),
+  });
+  const responseBody = await response.text();
+
+  if (!response.ok) {
+    const details = responseBody ? `: ${responseBody.slice(0, 500)}` : "";
+    throw new Error(`Upload failed (${response.status})${details}`);
+  }
+  console.log(`Uploaded ${filename} to the API`);
+
+  await unlink(filePath);
+  console.log(`Uploaded and deleted: ${filename}`);
+};
+
+const enqueueUpload = (filePath, filename) => {
+  uploadQueue = uploadQueue
+    .then(() => uploadFrame(filePath, filename))
+    .catch((error) => {
+      console.error(`Failed to process ${filePath}:`, error);
+    });
+};
+
+const watcher = fs.watch(spoolDir, { ignore: "*.tmp" }, (eventType, filename) => {
+  if (eventType !== "rename" || !filename) return;
+
+  const filePath = `${spoolDir}/${filename}`;
+  if (!fs.existsSync(filePath)) return;
+
+  console.log(`New file detected: ${filePath}`);
+  enqueueUpload(filePath, filename);
+});
+
+const ffmpeg = spawn(
+  "ffmpeg",
+  [
+    "-hide_banner",
+    "-loglevel", "warning",
+
+    "-rtsp_transport", "tcp",
+    "-i", process.env.TAPO_URL,
+
+    "-an",
+
+    "-vf", `fps=1/${captureIntervalSeconds}`,
+    "-q:v", "3",
+
+    "-f", "image2",
+    "-strftime", "1",
+    "-atomic_writing", "1",
+
+    `${spoolDir}/%Y-%m-%dT%H:%M:%S%z.jpg`,
+  ],
+  {
+    stdio: ["ignore", "pipe", "pipe"],
+  },
+);
+
+const shutdown = signal => {
+  if (shuttingDown) {
+    console.error(`Received ${signal} again, force stopping ffmpeg`);
+    ffmpeg.kill("SIGKILL");
+    return;
+  }
+
+  shuttingDown = true;
+  process.exitCode = signal === "SIGINT" ? 130 : 143;
+  watcher.close();
+  console.error(`Received ${signal}, stopping ffmpeg...`);
+
+  if (ffmpeg.exitCode === null && ffmpeg.signalCode === null) {
+    ffmpeg.kill("SIGTERM");
+    forceKillTimer = setTimeout(() => {
+      if (ffmpeg.exitCode === null && ffmpeg.signalCode === null) {
+        console.error("ffmpeg did not stop in time, force stopping it");
+        ffmpeg.kill("SIGKILL");
+      }
+    }, 5000);
+  }
+}
+
+ffmpeg.stderr.on("data", (data) => {
+  console.error(`[ffmpeg] ${data}`);
+});
+
+ffmpeg.on("exit", (code, signal) => {
+  clearTimeout(forceKillTimer);
+  watcher.close();
+  console.error(`ffmpeg exited: ${signal ?? code}`);
+
+  if (!shuttingDown && code !== 0) {
+    process.exitCode = code ?? 1;
+  }
+});
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));

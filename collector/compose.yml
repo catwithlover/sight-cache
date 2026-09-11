@@ -1,0 +1,35 @@
+name: sight-cache-collector
+
+x-collector: &collector
+  image: sight-cache-collector:local
+  build:
+    context: .
+    dockerfile: Dockerfile
+  init: true
+  restart: unless-stopped
+  stop_grace_period: 40s
+
+services:
+  camera-1:
+    <<: *collector
+    environment:
+      API_ENDPOINT: "${API_ENDPOINT:?Set API_ENDPOINT in compose.env}"
+      BEARER_TOKEN: "${CAMERA_1_BEARER_TOKEN:?Set CAMERA_1_BEARER_TOKEN in compose.env}"
+      TAPO_URL: "${CAMERA_1_TAPO_URL:?Set CAMERA_1_TAPO_URL in compose.env}"
+      CAPTURE_INTERVAL_SECONDS: "${CAMERA_1_CAPTURE_INTERVAL_SECONDS:-5}"
+    volumes:
+      - camera-1-frames:/app/frames
+
+  camera-2:
+    <<: *collector
+    environment:
+      API_ENDPOINT: "${API_ENDPOINT:?Set API_ENDPOINT in compose.env}"
+      BEARER_TOKEN: "${CAMERA_2_BEARER_TOKEN:?Set CAMERA_2_BEARER_TOKEN in compose.env}"
+      TAPO_URL: "${CAMERA_2_TAPO_URL:?Set CAMERA_2_TAPO_URL in compose.env}"
+      CAPTURE_INTERVAL_SECONDS: "${CAMERA_2_CAPTURE_INTERVAL_SECONDS:-5}"
+    volumes:
+      - camera-2-frames:/app/frames
+
+volumes:
+  camera-1-frames:
+  camera-2-frames:
