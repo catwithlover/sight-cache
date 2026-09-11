@@ -1,0 +1,6 @@
+LOCAL_ADMIN_BYPASS=true
+LOCAL_ADMIN_EMAIL=local@sight-cache.test
+
+# Only needed when exercising Access JWT verification locally.
+# ACCESS_TEAM_DOMAIN=https://your-team.cloudflareaccess.com
+# ACCESS_AUD=your-admin-application-audience
