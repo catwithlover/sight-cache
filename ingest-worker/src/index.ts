@@ -1,0 +1,229 @@
+import { Hono } from 'hono'
+import { bearerAuth } from 'hono/bearer-auth'
+import { bodyLimit } from 'hono/body-limit'
+import { validator } from 'hono/validator'
+import {
+  getDeviceByToken,
+  updateDeviceLastFrameAt,
+  type AccessDevice,
+} from './devices'
+
+type AppEnv = {
+  Bindings: {
+    BUCKET: R2Bucket,
+    DB: D1Database
+  }
+  Variables: {
+    accessDevice: AccessDevice
+  }
+}
+
+const imageFilenamePattern =
+  /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d):([0-5]\d)([+-])(\d{2})(\d{2})\.jpg$/u
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
+
+const parseImageFilename = (filename: string) => {
+  const match = imageFilenamePattern.exec(filename)
+  if (!match) return null
+
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const offsetHours = Number(match[8])
+  const offsetMinutes = Number(match[9])
+  const date = new Date(`${match[1]}-${match[2]}-${match[3]}T00:00:00Z`)
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() + 1 !== month ||
+    date.getUTCDate() !== day ||
+    offsetHours > 14 ||
+    offsetMinutes > 59 ||
+    (offsetHours === 14 && offsetMinutes !== 0)
+  ) {
+    return null
+  }
+
+  const capturedAt = new Date(
+    `${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${match[6]}${match[7]}${match[8]}:${match[9]}`,
+  )
+
+  return Number.isNaN(capturedAt.getTime()) ? null : capturedAt
+}
+
+const buildImagePath = (deviceId: string, capturedAt: Date) => {
+  const dateTime = capturedAt.toISOString()
+  const pathTimestamp = dateTime
+    .replaceAll('-', '')
+    .replaceAll(':', '')
+    .replace('.000', '')
+
+  return [
+    'frames',
+    deviceId,
+    dateTime.slice(0, 4),
+    dateTime.slice(5, 7),
+    dateTime.slice(8, 10),
+    dateTime.slice(11, 13),
+    dateTime.slice(14, 16),
+    `${pathTimestamp}.jpg`,
+  ].join('/')
+}
+
+const validateIngestHeaders = validator('header', (headers, c) => {
+  const originalFilename = headers['x-filename']
+  const capturedAt = originalFilename
+    ? parseImageFilename(originalFilename)
+    : null
+
+  if (!capturedAt) {
+    return c.json(
+      {
+        error: {
+          code: 'filename_invalid',
+          message:
+            'x-filename must be a valid ISO 8601 JPEG filename, such as 2026-09-12T03:42:47+0800.jpg.',
+        },
+      },
+      400,
+    )
+  }
+
+  const contentType = headers['content-type']
+    ?.split(';', 1)[0]
+    .trim()
+    .toLowerCase()
+
+  if (contentType !== 'image/jpeg') {
+    return c.json(
+      {
+        error: {
+          code: 'content_type_invalid',
+          message: 'Content-Type must be image/jpeg.',
+        },
+      },
+      415,
+    )
+  }
+
+  const contentLengthHeader = headers['content-length']
+  if (!contentLengthHeader) {
+    return c.json(
+      {
+        error: {
+          code: 'content_length_required',
+          message: 'Content-Length is required.',
+        },
+      },
+      411,
+    )
+  }
+
+  const contentLength = Number(contentLengthHeader)
+  if (
+    !/^\d+$/u.test(contentLengthHeader) ||
+    !Number.isSafeInteger(contentLength) ||
+    contentLength <= 0
+  ) {
+    return c.json(
+      {
+        error: {
+          code: 'content_length_invalid',
+          message: 'Content-Length must be a positive integer.',
+        },
+      },
+      400,
+    )
+  }
+
+  return { capturedAt, contentLength }
+})
+
+const limitImageBody = bodyLimit({
+  maxSize: MAX_IMAGE_SIZE_BYTES,
+  onError: (c) =>
+    c.json(
+      {
+        error: {
+          code: 'image_too_large',
+          message: 'Image size must not exceed 10 MiB.',
+        },
+      },
+      413,
+    ),
+})
+
+const app = new Hono<AppEnv>()
+
+app.use(
+  '/api/*',
+  bearerAuth<AppEnv>({
+    verifyToken: async (token, c) => {
+      const device = await getDeviceByToken(c.env.DB, token)
+
+      if (!device) {
+        return false
+      }
+
+      c.set('accessDevice', device)
+
+      return true
+    },
+  }),
+)
+
+app.post(
+  '/api/ingest',
+  validateIngestHeaders,
+  limitImageBody,
+  async (c) => {
+    const accessDevice = c.get('accessDevice')
+    const { capturedAt } = c.req.valid('header')
+    const body = c.req.raw.body
+
+    if (!body) {
+      return c.json(
+        {
+          error: {
+            code: 'body_missing',
+            message: 'Image body is required.',
+          },
+        },
+        400,
+      )
+    }
+
+    const dateTime = capturedAt.toISOString()
+    const path = buildImagePath(accessDevice.id, capturedAt)
+    const storedFrame = await c.env.BUCKET.put(path, body, {
+      httpMetadata: {
+        contentType: 'image/jpeg',
+        cacheControl: 'no-store',
+      },
+      customMetadata: {
+        capturedAt: dateTime,
+      },
+    })
+
+    c.executionCtx.waitUntil(
+      updateDeviceLastFrameAt(
+        c.env.DB,
+        accessDevice,
+        storedFrame.uploaded,
+      ).catch((error) => {
+        console.error('Failed to update device last_frame_at', error)
+      }),
+    )
+
+    return c.json({
+      status: 200,
+      message: 'process successfully',
+    })
+  },
+)
+
+app.get('/', (c) => {
+  return c.text('Hello Hono!')
+})
+
+export default app

@@ -1,0 +1,16 @@
+{
+  "name": "ingest-worker",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --persist-to ../.wrangler/state",
+    "deploy": "wrangler deploy --minify",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
+  },
+  "dependencies": {
+    "hono": "^4.13.7",
+    "typescript": "^7.0.2"
+  },
+  "devDependencies": {
+    "wrangler": "^4.110.0"
+  }
+}

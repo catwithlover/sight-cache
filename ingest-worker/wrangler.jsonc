@@ -1,0 +1,29 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ingest-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-11",
+  // "compatibility_flags": [
+  //   "nodejs_compat"
+  // ],
+  // "vars": {
+  //   "MY_VAR": "my-variable"
+  // },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sight-cache",
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "sight-cache",
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "workers_dev": false
+}
