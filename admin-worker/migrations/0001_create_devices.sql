@@ -3,7 +3,8 @@ CREATE TABLE devices (
   name TEXT NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 80),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  disabled_at TEXT
+  disabled_at TEXT,
+  last_frame_at TEXT
 );
 
 CREATE TABLE device_tokens (

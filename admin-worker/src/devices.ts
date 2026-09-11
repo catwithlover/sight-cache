@@ -16,6 +16,7 @@ export type Device = {
   createdAt: string
   updatedAt: string
   disabledAt: string | null
+  lastFrameAt: string | null
   token: {
     id: string
     hint: string
@@ -30,6 +31,7 @@ type DeviceRow = {
   created_at: string
   updated_at: string
   disabled_at: string | null
+  last_frame_at: string | null
   token_id: string | null
   token_hint: string | null
   token_created_at: string | null
@@ -62,6 +64,7 @@ const deviceSelect = `
     d.created_at,
     d.updated_at,
     d.disabled_at,
+    d.last_frame_at,
     t.id AS token_id,
     t.token_hint,
     t.created_at AS token_created_at,
@@ -78,6 +81,7 @@ const toDevice = (row: DeviceRow): Device => ({
   createdAt: row.created_at,
   updatedAt: row.updated_at,
   disabledAt: row.disabled_at,
+  lastFrameAt: row.last_frame_at,
   token:
     row.token_id && row.token_hint && row.token_created_at
       ? {
@@ -175,6 +179,7 @@ export const createDevice = async (db: D1Database, name: string) => {
     createdAt: now,
     updatedAt: now,
     disabledAt: null,
+    lastFrameAt: null,
     token: {
       id: credential.id,
       hint: credential.hint,
