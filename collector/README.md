@@ -62,9 +62,10 @@ npm start
 ## Docker Compose
 
 `compose.yml` defines two isolated camera instances that share the same
-Collector image. Create the ignored `compose.env` file from
-`compose.env.example`, then give each camera its own Collector Token, RTSP URL,
-and optional capture interval.
+Collector image.
+
+Create `compose.env` from `compose.env.example`, then give each camera its own
+Collector Token, RTSP URL, and optional capture interval.
 
 Build the image and start every camera instance:
 
@@ -72,15 +73,9 @@ Build the image and start every camera instance:
 docker compose --env-file compose.env up --build --detach
 ```
 
-Start only one camera instance by specifying its service name:
-
-```sh
-docker compose --env-file compose.env up --build --detach camera-1
-```
-
-Each instance has a separate named volume mounted at `/app/frames`. To add
-another camera, duplicate a camera service and its volume in `compose.yml`, then
-add the corresponding camera-prefixed values to `compose.env`.
+To add another camera, duplicate a camera service and its volume in
+`compose.yml`, then add the corresponding camera-prefixed values to
+`compose.env`.
 
 ## Capture and upload behavior
 

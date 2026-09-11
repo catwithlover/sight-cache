@@ -35,8 +35,7 @@ RTSP 攝影機
 [TAPO 前置設定操作指引](https://www.tp-link.com/us/support/faq/2680/)，並完成設定。
 
 - 確認攝影機型號支援 RTSP；不同型號的支援情況不同。
-- 在 Tapo App 開啟 **Device Settings > Advanced Settings > Camera Account**，
-  建立攝影機專用憑證。此帳號與登入 Tapo App 的 Tapo 帳號不同。
+- 在 Tapo App 開啟 **Device Settings > Advanced Settings > Camera Account**，建立攝影機專用憑證。此帳號與登入 Tapo App 的 Tapo 帳號不同。
 - 查詢攝影機的區域網路 IP 位址，並讓 Collector 與攝影機位於同一受信任的
   區域網路。
 - `stream1` 為高畫質串流，`stream2` 為標準畫質串流。
@@ -61,8 +60,8 @@ npm start
 ## Docker Compose
 
 `compose.yml` 定義兩個相互隔離、共用同一 Collector image 的攝影機 instance。
-請以 `compose.env.example` 為範本建立不納入版本控制的 `compose.env`，並為每台
-攝影機設定獨立的 Collector Token、RTSP URL 與選填的擷取間隔。
+
+請以 `compose.env.example` 為範本建立 `compose.env`，並為每台攝影機設定獨立的 Collector Token、RTSP URL 與選填的擷取間隔。
 
 建立 image 並啟動所有攝影機 instance：
 
@@ -70,15 +69,7 @@ npm start
 docker compose --env-file compose.env up --build --detach
 ```
 
-指定 service 名稱可只啟動其中一台攝影機：
-
-```sh
-docker compose --env-file compose.env up --build --detach camera-1
-```
-
-每個 instance 都有獨立的 named volume 掛載於 `/app/frames`。若要增加攝影機，
-請在 `compose.yml` 複製一組攝影機 service 與 volume，並在 `compose.env` 加入
-對應的攝影機前綴設定值。
+若要增加攝影機，請在 `compose.yml` 複製一組攝影機 service 與 volume，並在 `compose.env` 加入對應的攝影機前綴設定值。
 
 ## 擷取與上傳行為
 
