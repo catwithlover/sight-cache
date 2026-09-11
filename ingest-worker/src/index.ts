@@ -7,6 +7,7 @@ import {
   updateDeviceLastFrameAt,
   type AccessDevice,
 } from './devices'
+import { HomePage } from './home-page'
 
 type AppEnv = {
   Bindings: {
@@ -223,7 +224,19 @@ app.post(
 )
 
 app.get('/', (c) => {
-  return c.text('Hello Hono!')
+  c.header('Cache-Control', 'no-store')
+  c.header(
+    'Content-Security-Policy',
+    "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; style-src 'unsafe-inline'",
+  )
+  c.header('Cross-Origin-Resource-Policy', 'same-origin')
+  c.header('Permissions-Policy', 'camera=(), geolocation=(), microphone=()')
+  c.header('Referrer-Policy', 'no-referrer')
+  c.header('X-Content-Type-Options', 'nosniff')
+  c.header('X-Frame-Options', 'DENY')
+  c.header('X-Robots-Tag', 'noindex, nofollow')
+
+  return c.html(HomePage())
 })
 
 export default app
