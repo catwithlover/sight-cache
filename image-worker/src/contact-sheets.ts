@@ -34,6 +34,7 @@ const CONTACT_SHEET_SLOT_COUNT =
 const CONTACT_SHEET_WIDTH = CONTACT_SHEET_COLUMNS * TILE_WIDTH
 const CONTACT_SHEET_HEIGHT = CONTACT_SHEET_ROWS * TILE_HEIGHT
 const CONTACT_SHEET_BASE_URL = 'https://assets.local/blank.png'
+const MAX_CONTACT_SHEET_TILES_PER_PASS = 5
 const CONTACT_SHEET_SCHEMA_VERSION = 1
 const MAX_CONTACT_SHEET_SOURCE_BYTES = 48 * 1024 * 1024
 const QUEUE_SEND_BATCH_SIZE = 100
@@ -149,19 +150,22 @@ const renderContactSheet = async (
     frameInputs.push(await frameObject.arrayBuffer())
   }
 
-  let transformer = env.IMAGES.input(
-    arrayBufferToStream(baseImageBytes),
-  ).transform({
-    width: CONTACT_SHEET_WIDTH,
-    height: CONTACT_SHEET_HEIGHT,
-    fit: 'squeeze',
-  })
+  // The base is already output-sized, so each pass is reserved for tile work.
+  let transformer = env.IMAGES.input(arrayBufferToStream(baseImageBytes))
   let selectedCount = 0
+  let tilesInPass = 0
 
   for (let index = 0; index < samples.length; index += 1) {
     const frameInput = frameInputs[index]
 
     if (!frameInput) continue
+
+    // A tile resize plus draw uses two of the 10 allowed transformations.
+    if (tilesInPass === MAX_CONTACT_SHEET_TILES_PER_PASS) {
+      const intermediate = await transformer.output({ format: 'image/png' })
+      transformer = env.IMAGES.input(intermediate.image())
+      tilesInPass = 0
+    }
 
     transformer = transformer.draw(
       env.IMAGES.input(arrayBufferToStream(frameInput)).transform({
@@ -175,6 +179,7 @@ const renderContactSheet = async (
       },
     )
     selectedCount += 1
+    tilesInPass += 1
   }
 
   const result = await transformer.output({
