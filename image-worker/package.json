@@ -5,12 +5,16 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
-    "mcp-inspect": "npx @modelcontextprotocol/inspector@latest"
+    "mcp-inspect": "npx @modelcontextprotocol/inspector@latest",
+    "test": "node --experimental-strip-types --test test/frame-sampling.test.mjs && npm run test:mcp",
+    "test:mcp": "wrangler deploy --dry-run --outdir .test-build && node --test test/mcp-http.test.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.0.0",
     "agents": "^0.23.0",
     "hono": "^4.13.7",
+    "jose": "^6.2.12",
     "typescript": "^7.0.2",
     "zod": "^4.6.2"
   },

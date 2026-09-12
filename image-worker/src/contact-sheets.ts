@@ -5,7 +5,10 @@ import {
   sampleFrames,
   samplingLayouts,
   type FrameSample,
+  type SamplingUnit,
 } from './frame-sampling'
+import { contactSheetLayouts } from './contact-sheet-layout'
+import { z } from 'zod'
 
 export type ContactSheetBuildJob = {
   version: 1
@@ -19,6 +22,10 @@ export type Bindings = Omit<
   'CONTACT_SHEET_BUILDER_QUEUE'
 > & {
   CONTACT_SHEET_BUILDER_QUEUE: Queue<ContactSheetBuildJob>
+  ACCESS_AUD?: string
+  ACCESS_TEAM_DOMAIN?: string
+  MCP_ALLOWED_ORIGIN_HOSTNAMES?: string
+  MCP_MAX_LOOKBACK_DAYS?: string
 }
 
 type DeviceIdRow = {
@@ -27,17 +34,70 @@ type DeviceIdRow = {
 
 const TILE_WIDTH = 640
 const TILE_HEIGHT = 360
-const CONTACT_SHEET_COLUMNS = 2
-const CONTACT_SHEET_ROWS = 5
-const CONTACT_SHEET_SLOT_COUNT =
-  CONTACT_SHEET_COLUMNS * CONTACT_SHEET_ROWS
+const CONTACT_SHEET_COLUMNS = contactSheetLayouts.hour.columns
+const CONTACT_SHEET_ROWS = {
+  minute: contactSheetLayouts.minute.rows,
+  hour: contactSheetLayouts.hour.rows,
+} satisfies Record<SamplingUnit, number>
 const CONTACT_SHEET_WIDTH = CONTACT_SHEET_COLUMNS * TILE_WIDTH
-const CONTACT_SHEET_HEIGHT = CONTACT_SHEET_ROWS * TILE_HEIGHT
 const CONTACT_SHEET_BASE_URL = 'https://assets.local/blank.png'
 const MAX_CONTACT_SHEET_TILES_PER_PASS = 5
 const CONTACT_SHEET_SCHEMA_VERSION = 1
 const MAX_CONTACT_SHEET_SOURCE_BYTES = 48 * 1024 * 1024
 const QUEUE_SEND_BATCH_SIZE = 100
+
+const contactSheetSlotSchema = z.strictObject({
+  slot: z.number().int().nonnegative(),
+  row: z.number().int().nonnegative(),
+  column: z.number().int().nonnegative(),
+  targetAt: z.iso.datetime(),
+  slotEndAt: z.iso.datetime(),
+  capturedAt: z.iso.datetime().nullable(),
+  deltaMs: z.number().nonnegative().nullable(),
+  status: z.enum(['captured', 'missing']),
+})
+
+const contactSheetSchema = z.strictObject({
+  index: z.number().int().nonnegative(),
+  number: z.number().int().positive(),
+  key: z.string().min(1),
+  rows: z.number().int().positive(),
+  columns: z.number().int().positive(),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  selectedCount: z.number().int().nonnegative(),
+  slots: z.array(contactSheetSlotSchema),
+})
+
+export const contactSheetManifestSchema = z.strictObject({
+  schemaVersion: z.literal(CONTACT_SHEET_SCHEMA_VERSION),
+  type: z.enum(['minute-contact-sheets', 'hourly-contact-sheets']),
+  deviceId: z.string().regex(deviceIdPattern),
+  unit: z.enum(['minute', 'hour']),
+  beginAt: z.iso.datetime(),
+  endAt: z.iso.datetime(),
+  generatedAt: z.iso.datetime(),
+  candidateCount: z.number().int().nonnegative(),
+  selectedCount: z.number().int().nonnegative(),
+  sampling: z.strictObject({
+    slotCount: z.number().int().positive(),
+    toleranceMs: z.number().nonnegative(),
+  }),
+  layout: z.strictObject({
+    order: z.literal('row-major'),
+    origin: z.literal('top-left'),
+    tileWidth: z.number().int().positive(),
+    tileHeight: z.number().int().positive(),
+    rows: z.number().int().positive(),
+    columns: z.number().int().positive(),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+    sheetCount: z.number().int().positive(),
+  }),
+  sheets: z.array(contactSheetSchema),
+})
+
+export type ContactSheetManifest = z.infer<typeof contactSheetManifestSchema>
 
 const arrayBufferToStream = (buffer: ArrayBuffer) =>
   new ReadableStream<Uint8Array>({
@@ -55,10 +115,13 @@ const getPreviousHourBeginAt = (scheduledTime: number) => {
   )
 }
 
-const buildContactSheetPrefix = (deviceId: string, beginAt: Date) => {
+export const buildContactSheetPrefix = (
+  deviceId: string,
+  beginAt: Date,
+  unit: SamplingUnit,
+) => {
   const dateTime = beginAt.toISOString()
-
-  return [
+  const segments = [
     'contact-sheets',
     `v${CONTACT_SHEET_SCHEMA_VERSION}`,
     deviceId,
@@ -66,7 +129,11 @@ const buildContactSheetPrefix = (deviceId: string, beginAt: Date) => {
     dateTime.slice(5, 7),
     dateTime.slice(8, 10),
     dateTime.slice(11, 13),
-  ].join('/') + '/'
+  ]
+
+  if (unit === 'minute') segments.push(dateTime.slice(14, 16))
+
+  return `${segments.join('/')}/`
 }
 
 const parseContactSheetBuildJob = (value: unknown) => {
@@ -107,10 +174,12 @@ const parseContactSheetBuildJob = (value: unknown) => {
 const renderContactSheet = async (
   env: Bindings,
   deviceId: string,
-  hourBeginAt: Date,
+  windowBeginAt: Date,
+  unit: SamplingUnit,
   key: string,
   sheetIndex: number,
   samples: FrameSample[],
+  rows: number,
 ) => {
   const baseImage = await env.ASSETS.fetch(CONTACT_SHEET_BASE_URL)
 
@@ -182,6 +251,20 @@ const renderContactSheet = async (
     tilesInPass += 1
   }
 
+  if (rows !== CONTACT_SHEET_ROWS.hour) {
+    if (tilesInPass === MAX_CONTACT_SHEET_TILES_PER_PASS) {
+      const intermediate = await transformer.output({ format: 'image/png' })
+      transformer = env.IMAGES.input(intermediate.image())
+    }
+
+    transformer = transformer.transform({
+      width: CONTACT_SHEET_WIDTH,
+      height: rows * TILE_HEIGHT,
+      fit: 'cover',
+      gravity: 'top',
+    })
+  }
+
   const result = await transformer.output({
     format: 'image/jpeg',
     quality: 85,
@@ -192,9 +275,9 @@ const renderContactSheet = async (
       contentType: result.contentType(),
     },
     customMetadata: {
-      beginAt: hourBeginAt.toISOString(),
+      beginAt: windowBeginAt.toISOString(),
       deviceId,
-      kind: 'hourly-contact-sheet',
+      kind: unit === 'hour' ? 'hourly-contact-sheet' : 'minute-contact-sheet',
       schemaVersion: String(CONTACT_SHEET_SCHEMA_VERSION),
       sheetIndex: String(sheetIndex),
       sheetBeginAt: samples[0].targetAt,
@@ -205,10 +288,10 @@ const renderContactSheet = async (
     index: sheetIndex,
     number: sheetIndex + 1,
     key,
-    rows: CONTACT_SHEET_ROWS,
+    rows,
     columns: CONTACT_SHEET_COLUMNS,
     width: CONTACT_SHEET_WIDTH,
-    height: CONTACT_SHEET_HEIGHT,
+    height: rows * TILE_HEIGHT,
     selectedCount,
     slots: samples.map((sample, index) => {
       const hasFrame = sample.frame !== null && Boolean(frameInputs[index])
@@ -221,20 +304,24 @@ const renderContactSheet = async (
         slotEndAt: sample.slotEndAt,
         capturedAt: hasFrame ? sample.frame?.capturedAt ?? null : null,
         deltaMs: hasFrame ? sample.deltaMs : null,
-        status: hasFrame ? 'captured' : 'missing',
+        status: hasFrame ? ('captured' as const) : ('missing' as const),
       }
     }),
   }
 }
 
-const buildHourlyContactSheets = async (
+export const buildContactSheets = async (
   env: Bindings,
   deviceId: string,
   beginAt: Date,
+  unit: SamplingUnit,
 ) => {
-  const layout = samplingLayouts.hour
+  const layout = samplingLayouts[unit]
   const endAt = new Date(beginAt.getTime() + layout.durationMs)
-  const outputPrefix = buildContactSheetPrefix(deviceId, beginAt)
+  const contactSheetLayout = contactSheetLayouts[unit]
+  const rows = contactSheetLayout.rows
+  const sheetSlotCount = contactSheetLayout.slotsPerSheet
+  const outputPrefix = buildContactSheetPrefix(deviceId, beginAt, unit)
   const manifestKey = `${outputPrefix}manifest.json`
   const existingManifest = await env.BUCKET.head(manifestKey)
 
@@ -247,7 +334,7 @@ const buildHourlyContactSheets = async (
 
   const frames = await listFrames(
     env.BUCKET,
-    buildImagePrefix(deviceId, beginAt, 'hour'),
+    buildImagePrefix(deviceId, beginAt, unit),
   )
   const samples = sampleFrames(frames, {
     beginAt,
@@ -256,81 +343,161 @@ const buildHourlyContactSheets = async (
     columns: layout.columns,
     toleranceMs: layout.toleranceMs,
   })
-  const sheetCount = Math.ceil(samples.length / CONTACT_SHEET_SLOT_COUNT)
-  const sheets = []
 
-  for (let sheetIndex = 0; sheetIndex < sheetCount; sheetIndex += 1) {
-    const firstSlot = sheetIndex * CONTACT_SHEET_SLOT_COUNT
-    const sheetSamples = samples.slice(
-      firstSlot,
-      firstSlot + CONTACT_SHEET_SLOT_COUNT,
-    )
-    const key = `${outputPrefix}sheet-${String(sheetIndex + 1).padStart(2, '0')}.jpg`
-
-    sheets.push(
-      await renderContactSheet(
-        env,
-        deviceId,
-        beginAt,
-        key,
-        sheetIndex,
-        sheetSamples,
-      ),
-    )
+  if (unit === 'minute' && frames.length === 0) {
+    return {
+      status: 'no-frames' as const,
+      manifestKey,
+    }
   }
 
-  const generatedAt = new Date().toISOString()
-  const selectedCount = sheets.reduce(
-    (total, sheet) => total + sheet.selectedCount,
-    0,
-  )
-  const manifest = {
-    schemaVersion: CONTACT_SHEET_SCHEMA_VERSION,
-    type: 'hourly-contact-sheets',
-    deviceId,
-    unit: 'hour',
-    beginAt: beginAt.toISOString(),
-    endAt: endAt.toISOString(),
-    generatedAt,
-    candidateCount: frames.length,
-    selectedCount,
-    sampling: {
-      slotCount: samples.length,
-      toleranceMs: layout.toleranceMs,
-    },
-    layout: {
-      order: 'row-major',
-      origin: 'top-left',
-      tileWidth: TILE_WIDTH,
-      tileHeight: TILE_HEIGHT,
-      rows: CONTACT_SHEET_ROWS,
-      columns: CONTACT_SHEET_COLUMNS,
-      width: CONTACT_SHEET_WIDTH,
-      height: CONTACT_SHEET_HEIGHT,
-      sheetCount,
-    },
-    sheets,
-  }
+  const sheetCount = Math.ceil(samples.length / sheetSlotCount)
+  const generationPrefix = `${outputPrefix}generations/${crypto.randomUUID()}/`
+  const sheets: ContactSheetManifest['sheets'] = []
+  let published = false
 
-  await env.BUCKET.put(manifestKey, JSON.stringify(manifest), {
-    httpMetadata: {
-      contentType: 'application/json; charset=utf-8',
-    },
-    customMetadata: {
-      beginAt: beginAt.toISOString(),
+  try {
+    for (let sheetIndex = 0; sheetIndex < sheetCount; sheetIndex += 1) {
+      const firstSlot = sheetIndex * sheetSlotCount
+      const sheetSamples = samples.slice(
+        firstSlot,
+        firstSlot + sheetSlotCount,
+      )
+      const key = `${generationPrefix}sheet-${String(sheetIndex + 1).padStart(2, '0')}.jpg`
+
+      sheets.push(
+        await renderContactSheet(
+          env,
+          deviceId,
+          beginAt,
+          unit,
+          key,
+          sheetIndex,
+          sheetSamples,
+          rows,
+        ),
+      )
+    }
+
+    const generatedAt = new Date().toISOString()
+    const selectedCount = sheets.reduce(
+      (total, sheet) => total + sheet.selectedCount,
+      0,
+    )
+    const manifest: ContactSheetManifest = {
+      schemaVersion: CONTACT_SHEET_SCHEMA_VERSION,
+      type: unit === 'hour' ? 'hourly-contact-sheets' : 'minute-contact-sheets',
       deviceId,
-      kind: 'hourly-contact-sheet-manifest',
-      schemaVersion: String(CONTACT_SHEET_SCHEMA_VERSION),
-    },
-  })
+      unit,
+      beginAt: beginAt.toISOString(),
+      endAt: endAt.toISOString(),
+      generatedAt,
+      candidateCount: frames.length,
+      selectedCount,
+      sampling: {
+        slotCount: samples.length,
+        toleranceMs: layout.toleranceMs,
+      },
+      layout: {
+        order: 'row-major',
+        origin: 'top-left',
+        tileWidth: TILE_WIDTH,
+        tileHeight: TILE_HEIGHT,
+        rows,
+        columns: CONTACT_SHEET_COLUMNS,
+        width: CONTACT_SHEET_WIDTH,
+        height: rows * TILE_HEIGHT,
+        sheetCount,
+      },
+      sheets,
+    }
 
-  return {
-    status: 'built' as const,
-    manifestKey,
-    candidateCount: frames.length,
-    selectedCount,
-    sheetCount,
+    const storedManifest = await env.BUCKET.put(
+      manifestKey,
+      JSON.stringify(manifest),
+      {
+        onlyIf: { etagDoesNotMatch: '*' },
+        httpMetadata: {
+          contentType: 'application/json; charset=utf-8',
+        },
+        customMetadata: {
+          beginAt: beginAt.toISOString(),
+          deviceId,
+          kind:
+            unit === 'hour'
+              ? 'hourly-contact-sheet-manifest'
+              : 'minute-contact-sheet-manifest',
+          schemaVersion: String(CONTACT_SHEET_SCHEMA_VERSION),
+        },
+      },
+    )
+
+    if (!storedManifest) {
+      return {
+        status: 'already-built' as const,
+        manifestKey,
+      }
+    }
+
+    published = true
+
+    return {
+      status: 'built' as const,
+      manifestKey,
+      candidateCount: frames.length,
+      selectedCount,
+      sheetCount,
+    }
+  } finally {
+    if (!published && sheets.length > 0) {
+      try {
+        await env.BUCKET.delete(sheets.map((sheet) => sheet.key))
+      } catch (error) {
+        console.warn('Failed to clean up unpublished contact sheets', {
+          generationPrefix,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    }
   }
+}
+
+export const readContactSheetManifest = async (
+  bucket: R2Bucket,
+  deviceId: string,
+  beginAt: Date,
+  unit: SamplingUnit,
+) => {
+  const manifestKey = `${buildContactSheetPrefix(deviceId, beginAt, unit)}manifest.json`
+  const manifestObject = await bucket.get(manifestKey)
+
+  if (!manifestObject) return null
+
+  let value: unknown
+  try {
+    value = JSON.parse(await manifestObject.text())
+  } catch {
+    throw new Error(`Contact sheet manifest is not valid JSON: ${manifestKey}`)
+  }
+
+  const parsed = contactSheetManifestSchema.safeParse(value)
+
+  if (!parsed.success) {
+    throw new Error(`Contact sheet manifest has an invalid schema: ${manifestKey}`)
+  }
+
+  if (
+    parsed.data.deviceId !== deviceId ||
+    parsed.data.unit !== unit ||
+    parsed.data.beginAt !== beginAt.toISOString() ||
+    parsed.data.type !==
+      (unit === 'hour' ? 'hourly-contact-sheets' : 'minute-contact-sheets') ||
+    parsed.data.layout.sheetCount !== parsed.data.sheets.length
+  ) {
+    throw new Error(`Contact sheet manifest does not match its key: ${manifestKey}`)
+  }
+
+  return parsed.data
 }
 
 export const enqueuePreviousHourContactSheets = async (
@@ -391,7 +558,7 @@ export const consumeContactSheetJobs = async (
         continue
       }
 
-      const result = await buildHourlyContactSheets(env, deviceId, beginAt)
+      const result = await buildContactSheets(env, deviceId, beginAt, 'hour')
 
       console.log('Built hourly contact sheets', {
         messageId: message.id,

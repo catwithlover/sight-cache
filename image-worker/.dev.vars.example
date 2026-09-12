@@ -1,0 +1,4 @@
+ACCESS_TEAM_DOMAIN=https://your-team.cloudflareaccess.com
+ACCESS_AUD=your-access-application-aud
+MCP_ALLOWED_ORIGIN_HOSTNAMES=chatgpt.com
+MCP_MAX_LOOKBACK_DAYS=7

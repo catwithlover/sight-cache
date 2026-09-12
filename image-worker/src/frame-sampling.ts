@@ -4,6 +4,7 @@ export type FrameRef = {
   key: string
   capturedAt: string
   capturedAtMs: number
+  size: number
 }
 
 export type FrameSample = {
@@ -57,6 +58,15 @@ export const isSamplingUnit = (
   value: string | undefined,
 ): value is SamplingUnit => value === 'minute' || value === 'hour'
 
+export const isAlignedSamplingBeginAt = (
+  beginAt: Date,
+  unit: SamplingUnit,
+) =>
+  Number.isFinite(beginAt.getTime()) &&
+  beginAt.getUTCMilliseconds() === 0 &&
+  beginAt.getUTCSeconds() === 0 &&
+  (unit === 'minute' || beginAt.getUTCMinutes() === 0)
+
 export const buildImagePrefix = (
   deviceId: string,
   beginAt: Date,
@@ -75,6 +85,19 @@ export const buildImagePrefix = (
   ]
 
   return `${segments.filter((segment) => segment !== null).join('/')}/`
+}
+
+export const buildImageKey = (deviceId: string, capturedAt: Date) => {
+  const dateTime = capturedAt.toISOString()
+  const pathTimestamp = dateTime
+    .replaceAll('-', '')
+    .replaceAll(':', '')
+    .replace('.000', '')
+
+  return [
+    buildImagePrefix(deviceId, capturedAt, 'minute'),
+    `${pathTimestamp}.jpg`,
+  ].join('')
 }
 
 export const listFrames = async (bucket: R2Bucket, prefix: string) => {
@@ -103,6 +126,7 @@ export const listFrames = async (bucket: R2Bucket, prefix: string) => {
         key: object.key,
         capturedAt: new Date(capturedAtMs).toISOString(),
         capturedAtMs,
+        size: object.size,
       })
     }
 
@@ -113,6 +137,37 @@ export const listFrames = async (bucket: R2Bucket, prefix: string) => {
     console.warn(
       `Skipped ${invalidMetadataCount} frame(s) with invalid capturedAt metadata`,
     )
+  }
+
+  return frames.sort((left, right) => left.capturedAtMs - right.capturedAtMs)
+}
+
+export const listFramesInRange = async (
+  bucket: R2Bucket,
+  deviceId: string,
+  beginAt: Date,
+  endAt: Date,
+) => {
+  const minuteDurationMs = samplingLayouts.minute.durationMs
+  const beginAtMs = beginAt.getTime()
+  const endAtMs = endAt.getTime()
+  const frames: FrameRef[] = []
+  let minuteAtMs = Math.floor(beginAtMs / minuteDurationMs) * minuteDurationMs
+
+  while (minuteAtMs < endAtMs) {
+    const minuteAt = new Date(minuteAtMs)
+    const minuteFrames = await listFrames(
+      bucket,
+      buildImagePrefix(deviceId, minuteAt, 'minute'),
+    )
+
+    frames.push(
+      ...minuteFrames.filter(
+        (frame) =>
+          frame.capturedAtMs >= beginAtMs && frame.capturedAtMs < endAtMs,
+      ),
+    )
+    minuteAtMs += minuteDurationMs
   }
 
   return frames.sort((left, right) => left.capturedAtMs - right.capturedAtMs)
