@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import { mkdir, readFile, unlink } from "node:fs/promises";
+import { createInterface } from "node:readline";
 
 const spoolDir = "./frames";
 const captureIntervalSeconds = Number(
@@ -110,8 +111,22 @@ const shutdown = signal => {
   }
 }
 
-ffmpeg.stderr.on("data", (data) => {
-  console.error(`[ffmpeg] ${data}`);
+const ffmpegStderr = createInterface({ input: ffmpeg.stderr });
+const truncatedSeiMessage =
+  /^\[h264 @ 0x[\da-f]+\] SEI type 764 size \d+ truncated at \d+$/i;
+const repeatedMessage = /^\s*Last message repeated \d+ times$/;
+let previousFfmpegMessageWasIgnored = false;
+
+ffmpegStderr.on("line", (line) => {
+  if (truncatedSeiMessage.test(line)) {
+    previousFfmpegMessageWasIgnored = true;
+    return;
+  }
+
+  if (previousFfmpegMessageWasIgnored && repeatedMessage.test(line)) return;
+
+  previousFfmpegMessageWasIgnored = false;
+  console.error(`[ffmpeg] ${line}`);
 });
 
 ffmpeg.on("exit", (code, signal) => {
