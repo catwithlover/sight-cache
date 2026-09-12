@@ -70,10 +70,10 @@ const DeviceCard = ({ device }: { device: Device }) => {
           <dd>{device.token?.hint ?? '已撤銷'}</dd>
         </div>
         <div>
-          <dt>{disabled ? '停用時間' : '最近使用'}</dt>
+          <dt>{disabled ? '停用時間' : '最後影格'}</dt>
           <dd>
             <Timestamp
-              value={disabled ? device.disabledAt : device.token?.lastUsedAt ?? null}
+              value={disabled ? device.disabledAt : device.lastFrameAt}
             />
           </dd>
         </div>
@@ -203,7 +203,7 @@ export const AdminPage = ({ devices, user }: AdminPageProps) => {
                 <div>
                   <p class="eyebrow">存取清單</p>
                   <h2 id="registry-title">目前的觀測設備</h2>
-                  <p>查看最近使用時間，並只在必要時重新產生 Token。</p>
+                  <p>查看最後影格時間，並只在必要時重新產生 Token。</p>
                 </div>
                 <div class="registry-count" aria-label={`${activeDevices.length} 台可使用`}>
                   <strong>{activeDevices.length}</strong>
