@@ -5,7 +5,7 @@
   <p><a href="README.md" lang="en">English</a> · 繁體中文</p>
 </div>
 
-**Sight Cache** — 為 AI Agent 打造的自架監視器歷史管線，基於 Cloudflare 架構並透過 MCP 提供影像檢視工具。
+**Sight Cache** — 基於 Cloudflare 建構的無伺服器監視器歷史管線，透過 MCP 為 AI Agent 提供精簡且可檢視的影像記憶。
 
 ## 運作方式
 
