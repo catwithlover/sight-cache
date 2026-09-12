@@ -1,4 +1,6 @@
 import { Hono } from 'hono'
+import { createMcpHandler } from 'agents/mcp/server'
+import { createMcpServer } from './mcp-server'
 import {
   consumeContactSheetJobs,
   enqueuePreviousHourContactSheets,
@@ -127,7 +129,15 @@ app.get('/:deviceId', async (c) => {
 export { sampleFrames }
 
 export default {
-  fetch: app.fetch,
+  fetch(request, env, ctx) {
+    if (new URL(request.url).pathname === '/mcp') {
+      return createMcpHandler(
+        () => createMcpServer(env),
+      )(request, env, ctx)
+    }
+
+    return app.fetch(request, env, ctx)
+  },
   scheduled: enqueuePreviousHourContactSheets,
   queue: consumeContactSheetJobs,
 } satisfies ExportedHandler<Bindings, ContactSheetBuildJob>
