@@ -25,6 +25,11 @@
       "max_retries": 2,
       "retry_delay": 60,
       "dead_letter_queue": "sight-cache-contact-sheet-builder-dead-letter-queue"
+    },{
+      "queue": "sight-cache-contact-sheet-builder-dead-letter-queue",
+      "max_batch_size": 1,
+      "max_concurrency": 1,
+      "max_retries": 1,
     }],
     "producers": [{
       "binding": "CONTACT_SHEET_BUILDER_QUEUE",
