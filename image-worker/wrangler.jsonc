@@ -3,12 +3,34 @@
   "name": "image-worker",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-11",
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./assets"
+  },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "sight-cache",
     }
   ],
+  "images": {
+    "binding": "IMAGES",
+    "remote": true,
+  },
+  "queues": {
+    "consumers": [{
+      "queue": "sight-cache-contact-sheet-builder-queue",
+      "max_batch_size": 1,
+      "max_concurrency": 1,
+      "max_retries": 2,
+      "retry_delay": 60,
+      "dead_letter_queue": "sight-cache-contact-sheet-builder-dead-letter-queue"
+    }],
+    "producers": [{
+      "binding": "CONTACT_SHEET_BUILDER_QUEUE",
+      "queue": "sight-cache-contact-sheet-builder-queue"
+    }]
+  },
   "r2_buckets": [
     {
       "binding": "BUCKET",
