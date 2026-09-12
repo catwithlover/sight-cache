@@ -1,0 +1,14 @@
+{
+  "name": "sight-cache",
+  "private": true,
+  "workspaces": [
+    "collector",
+    "admin-worker",
+    "ingest-worker",
+    "image-worker",
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}
