@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { requireAccess, type AppEnv } from './access'
 import { AdminPage } from './admin-page'
+import { HomePage } from './home-page'
 import {
   createDevice,
   createDeviceInputSchema,
@@ -28,6 +29,15 @@ app.use('*', async (c, next) => {
   await next()
 })
 
+app.get('/', (c) => {
+  c.header(
+    'Content-Security-Policy',
+    "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; img-src 'self'; style-src 'unsafe-inline'",
+  )
+
+  return c.html(<HomePage />)
+})
+
 app.use('*', requireAccess)
 
 app.use('/api/*', async (c, next) => {
@@ -50,8 +60,6 @@ app.use('/api/*', async (c, next) => {
 
   await next()
 })
-
-app.get('/', (c) => c.redirect('/admin', 302))
 
 app.get('/admin', async (c) => {
   const devices = await listDevices(c.env.DB)

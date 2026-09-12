@@ -121,6 +121,7 @@ export const AdminPage = ({ devices, user }: AdminPageProps) => {
           <meta name="robots" content="noindex, nofollow" />
           <meta name="theme-color" content="#f5f7f8" />
           <title>設備管理 | Sight Cache</title>
+          <link rel="icon" href="/logo.svg" type="image/svg+xml" />
           <link rel="stylesheet" href="/admin/assets.css" />
         </head>
         <body>
@@ -129,11 +130,7 @@ export const AdminPage = ({ devices, user }: AdminPageProps) => {
           <header class="topbar">
             <div class="topbar-inner">
               <a href="/admin" class="brand" aria-label="Sight Cache 設備控制台首頁">
-                <span class="brand-mark" aria-hidden="true">
-                  <i></i>
-                  <i></i>
-                  <i></i>
-                </span>
+                <img class="brand-mark" src="/logo.svg" alt="" width="50" height="50" />
                 <span class="brand-copy">
                   <strong>Sight Cache</strong>
                   <small>設備控制台</small>

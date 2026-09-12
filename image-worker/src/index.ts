@@ -13,10 +13,27 @@ import {
   sampleFrames,
   samplingLayouts,
 } from './frame-sampling'
+import { HomePage } from './home-page'
 
 type AppEnv = { Bindings: Bindings }
 
 const app = new Hono<AppEnv>()
+
+app.get('/', (c) => {
+  c.header('Cache-Control', 'no-store')
+  c.header(
+    'Content-Security-Policy',
+    "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; img-src 'self'; style-src 'unsafe-inline'",
+  )
+  c.header('Cross-Origin-Resource-Policy', 'same-origin')
+  c.header('Permissions-Policy', 'camera=(), geolocation=(), microphone=()')
+  c.header('Referrer-Policy', 'no-referrer')
+  c.header('X-Content-Type-Options', 'nosniff')
+  c.header('X-Frame-Options', 'DENY')
+  c.header('X-Robots-Tag', 'noindex, nofollow')
+
+  return c.html(HomePage())
+})
 
 app.get('/:deviceId', async (c) => {
   const deviceId = c.req.param('deviceId')

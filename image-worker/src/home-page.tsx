@@ -44,7 +44,6 @@ body {
 }
 
 .status-card {
-  position: relative;
   width: min(100%, 44rem);
   padding: clamp(2rem, 6vw, 4rem);
   overflow: hidden;
@@ -61,13 +60,24 @@ body {
   margin: -12px auto 4px;
 }
 
-.brand-name {
+.brand-name,
+.service-name {
   margin: 0;
-  color: var(--action);
-  font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.brand-name {
+  color: var(--action);
+  font-size: 0.78rem;
+}
+
+.service-name {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
 }
 
 h1 {
@@ -79,13 +89,21 @@ h1 {
   line-height: 1.12;
 }
 
-.transfer-illustration {
+.description {
+  width: min(100%, 31rem);
+  margin: 15px auto 0;
+  color: var(--muted);
+  font-size: 0.98rem;
+  line-height: 1.65;
+}
+
+.processing-illustration {
   display: grid;
   width: min(100%, 32rem);
-  min-height: 164px;
-  grid-template-columns: 88px minmax(80px, 1fr) 108px;
-  margin: 30px auto 0;
-  padding: 26px;
+  min-height: 174px;
+  grid-template-columns: 96px minmax(70px, 1fr) 112px;
+  margin: 28px auto 0;
+  padding: 25px;
   align-items: center;
   gap: 14px;
   background: var(--action-soft);
@@ -93,53 +111,68 @@ h1 {
   border-radius: 22px 22px 22px 8px;
 }
 
-.camera-shape {
+.frame-stack {
   position: relative;
-  width: 82px;
-  height: 62px;
-  background: var(--action);
-  border-radius: 18px 18px 10px;
+  width: 92px;
+  height: 94px;
 }
 
-.camera-shape::before {
+.frame-card {
   position: absolute;
-  top: -8px;
-  left: 13px;
-  width: 29px;
-  height: 11px;
-  background: var(--action);
-  border-radius: 7px 7px 0 0;
-  content: "";
+  width: 76px;
+  height: 52px;
+  overflow: hidden;
+  background: #f9fbfd;
+  border: 2px solid var(--action);
+  border-radius: 10px 10px 10px 4px;
 }
 
-.camera-lens {
+.frame-card::before {
   position: absolute;
-  top: 13px;
-  right: 13px;
-  width: 36px;
-  height: 36px;
-  background: var(--surface);
-  border: 8px solid #8bb9e8;
-  border-radius: 50%;
-}
-
-.camera-light {
-  position: absolute;
-  top: 13px;
-  left: 13px;
+  top: 8px;
+  right: 9px;
   width: 8px;
   height: 8px;
   background: var(--accent);
-  border: 2px solid #f6dca9;
   border-radius: 50%;
+  content: "";
 }
 
-.signal-track {
+.frame-card::after {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  height: 19px;
+  background: #9fc3e8;
+  border-radius: 5px 5px 2px 2px;
+  clip-path: polygon(0 100%, 25% 31%, 45% 70%, 68% 8%, 100% 100%);
+  content: "";
+}
+
+.frame-card:nth-child(1) {
+  top: 0;
+  left: 0;
+  background: #c6dbf1;
+}
+
+.frame-card:nth-child(2) {
+  top: 15px;
+  left: 8px;
+  background: #fff4dd;
+}
+
+.frame-card:nth-child(3) {
+  top: 30px;
+  left: 16px;
+}
+
+.process-track {
   position: relative;
   height: 56px;
 }
 
-.signal-track::before {
+.process-track::before {
   position: absolute;
   top: 27px;
   right: 0;
@@ -148,7 +181,7 @@ h1 {
   content: "";
 }
 
-.signal-track::after {
+.process-track::after {
   position: absolute;
   top: 22px;
   right: -1px;
@@ -160,74 +193,42 @@ h1 {
   transform: rotate(45deg);
 }
 
-.traveling-frame {
+.moving-frame {
   position: absolute;
   z-index: 1;
-  top: 12px;
+  top: 13px;
   left: 0;
-  width: 31px;
+  width: 29px;
   height: 27px;
-  overflow: hidden;
   background: #fff8e9;
   border: 3px solid var(--accent);
   border-radius: 7px 7px 4px;
-  animation: frame-travel 3.2s ease-in-out infinite;
+  animation: frame-sort 3.2s ease-in-out infinite;
 }
 
-.traveling-frame::before {
-  position: absolute;
-  right: 3px;
-  bottom: 3px;
-  left: 3px;
-  height: 8px;
-  background: #a7c8ea;
-  border-radius: 4px 4px 2px 2px;
-  clip-path: polygon(0 100%, 28% 28%, 48% 68%, 70% 8%, 100% 100%);
-  content: "";
-}
-
-.archive-shape {
-  position: relative;
-  width: 102px;
-  height: 96px;
-}
-
-.archive-shape span {
-  position: absolute;
-  width: 82px;
-  height: 67px;
+.contact-sheet {
+  display: grid;
+  width: 108px;
+  height: 124px;
+  grid-template: repeat(5, 1fr) / repeat(2, 1fr);
+  gap: 5px;
+  padding: 9px;
+  background: var(--surface);
   border: 2px solid var(--action);
   border-radius: 13px 13px 13px 6px;
 }
 
-.archive-shape span:nth-child(1) {
-  top: 0;
-  left: 0;
+.contact-sheet span {
   background: #bcd6f1;
+  border-radius: 3px 3px 3px 1px;
 }
 
-.archive-shape span:nth-child(2) {
-  top: 9px;
-  left: 9px;
+.contact-sheet span:nth-child(3n + 2) {
   background: #f6dca9;
 }
 
-.archive-shape span:nth-child(3) {
-  top: 18px;
-  left: 18px;
-  background: var(--surface);
-}
-
-.archive-shape span:nth-child(3)::after {
-  position: absolute;
-  right: 15px;
-  bottom: 13px;
-  left: 15px;
-  height: 10px;
-  background: #bcd6f1;
-  border-radius: 5px 5px 2px 2px;
-  content: "";
-  clip-path: polygon(0 100%, 24% 26%, 47% 66%, 70% 8%, 100% 100%);
+.contact-sheet span:nth-child(4n) {
+  background: #8bb9e8;
 }
 
 .service-state {
@@ -275,7 +276,7 @@ h1 {
   }
 }
 
-@keyframes frame-travel {
+@keyframes frame-sort {
   0%,
   14% {
     left: 0;
@@ -283,7 +284,7 @@ h1 {
 
   72%,
   100% {
-    left: calc(100% - 31px);
+    left: calc(100% - 29px);
   }
 }
 
@@ -299,73 +300,60 @@ h1 {
     margin-top: -9px;
   }
 
-  .transfer-illustration {
-    min-height: 132px;
-    grid-template-columns: 60px minmax(46px, 1fr) 72px;
-    padding: 19px 16px;
-    gap: 8px;
+  .processing-illustration {
+    min-height: 140px;
+    grid-template-columns: 72px minmax(38px, 1fr) 78px;
+    padding: 18px 14px;
+    gap: 7px;
   }
 
-  .camera-shape {
-    width: 60px;
-    height: 47px;
-    border-radius: 14px 14px 8px;
-  }
-
-  .camera-shape::before {
-    top: -6px;
-    left: 10px;
-    width: 22px;
-    height: 8px;
-  }
-
-  .camera-lens {
-    top: 10px;
-    right: 9px;
-    width: 27px;
-    height: 27px;
-    border-width: 6px;
-  }
-
-  .camera-light {
-    top: 10px;
-    left: 9px;
-    width: 7px;
-    height: 7px;
-  }
-
-  .archive-shape {
-    width: 72px;
+  .frame-stack {
+    width: 70px;
     height: 72px;
   }
 
-  .archive-shape span {
-    width: 56px;
-    height: 48px;
+  .frame-card {
+    width: 57px;
+    height: 39px;
+    border-radius: 8px 8px 8px 3px;
+  }
+
+  .frame-card::before {
+    top: 6px;
+    right: 7px;
+    width: 6px;
+    height: 6px;
+  }
+
+  .frame-card::after {
+    right: 6px;
+    bottom: 6px;
+    left: 6px;
+    height: 14px;
+  }
+
+  .frame-card:nth-child(2) {
+    top: 11px;
+    left: 6px;
+  }
+
+  .frame-card:nth-child(3) {
+    top: 22px;
+    left: 12px;
+  }
+
+  .contact-sheet {
+    width: 76px;
+    height: 94px;
+    gap: 3px;
+    padding: 7px;
     border-radius: 10px 10px 10px 5px;
-  }
-
-  .archive-shape span:nth-child(2) {
-    top: 7px;
-    left: 7px;
-  }
-
-  .archive-shape span:nth-child(3) {
-    top: 14px;
-    left: 14px;
-  }
-
-  .archive-shape span:nth-child(3)::after {
-    right: 10px;
-    bottom: 9px;
-    left: 10px;
-    height: 8px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .traveling-frame {
-    left: calc(50% - 15px);
+  .moving-frame {
+    left: calc(50% - 14px);
     animation: none;
   }
 
@@ -382,10 +370,10 @@ export const HomePage = () => (
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="description" content="Sight Cache ingest service availability." />
+        <meta name="description" content="Sight Cache image service availability." />
         <meta name="robots" content="noindex, nofollow" />
         <meta name="theme-color" content="#f5f7f8" />
-        <title>Sight Cache</title>
+        <title>Image Worker | Sight Cache</title>
         <link rel="icon" href="/logo.svg" type="image/svg+xml" />
         <style>{raw(styles)}</style>
       </head>
@@ -394,16 +382,28 @@ export const HomePage = () => (
           <section class="status-card" aria-labelledby="page-title">
             <img class="brand-logo" src="/logo.svg" alt="" width="92" height="92" />
             <p class="brand-name">Sight Cache</p>
+            <p class="service-name">Image worker</p>
             <h1 id="page-title">Service is ready</h1>
-            <div class="transfer-illustration" aria-hidden="true">
-              <div class="camera-shape">
-                <span class="camera-light"></span>
-                <span class="camera-lens"></span>
+            <p class="description">
+              Sampling stored frames and assembling hourly contact sheets.
+            </p>
+            <div class="processing-illustration" aria-hidden="true">
+              <div class="frame-stack">
+                <span class="frame-card"></span>
+                <span class="frame-card"></span>
+                <span class="frame-card"></span>
               </div>
-              <div class="signal-track">
-                <span class="traveling-frame"></span>
+              <div class="process-track">
+                <span class="moving-frame"></span>
               </div>
-              <div class="archive-shape">
+              <div class="contact-sheet">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
                 <span></span>
                 <span></span>
                 <span></span>

@@ -227,7 +227,7 @@ app.get('/', (c) => {
   c.header('Cache-Control', 'no-store')
   c.header(
     'Content-Security-Policy',
-    "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; style-src 'unsafe-inline'",
+    "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; img-src 'self'; style-src 'unsafe-inline'",
   )
   c.header('Cross-Origin-Resource-Policy', 'same-origin')
   c.header('Permissions-Policy', 'camera=(), geolocation=(), microphone=()')

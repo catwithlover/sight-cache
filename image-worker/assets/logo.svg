@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="1254" height="1254" viewBox="0 0 1254 1254"
+     role="img" aria-labelledby="title desc">
+  <title id="title">Cloud monitoring camera</title>
+  <desc id="desc">A white indoor security camera standing on a blue cloud.</desc>
+
+  <!-- Product-blue cloud silhouette behind the camera. -->
+  <path fill="#2980b9" d="
+    M 299,728
+    C 303,668 348,610 416,584
+    C 468,564 519,574 552,604
+    C 580,552 628,523 683,523
+    C 764,523 831,577 852,651
+    C 861,681 862,707 860,728
+    C 887,716 918,713 949,719
+    C 989,716 1029,735 1057,766
+    C 1083,797 1096,831 1095,859
+    C 1094,909 1073,954 1040,982
+    C 1022,998 1001,1007 978,1008
+    C 775,1010 505,1010 274,1008
+    C 236,1005 205,988 181,961
+    C 157,933 147,896 148,859
+    C 149,812 166,771 198,742
+    C 224,718 258,710 299,712
+    C 298,717 298,723 299,728 Z"/>
+
+  <!-- Lower rounded camera housing. -->
+  <path fill="#f6f7f8" d="
+    M 389,758
+    C 398,730 487,710 627,710
+    C 766,710 855,731 865,760
+    C 874,790 883,823 886,856
+    C 891,895 880,918 846,936
+    C 795,958 714,967 627,967
+    C 541,967 462,958 409,938
+    C 376,925 362,902 370,870
+    C 374,830 380,787 389,758 Z"/>
+
+  <!-- Beveled top plate of the base. -->
+  <path fill="#e0e3e7" d="
+    M 414,753
+    C 421,721 507,699 627,699
+    C 747,699 833,721 840,753
+    C 844,785 752,812 627,813
+    C 502,812 410,785 414,753 Z"/>
+  <path fill="#f7f8f9" d="
+    M 420,743
+    C 435,714 514,697 627,697
+    C 740,697 819,714 834,743
+    C 818,770 739,792 627,793
+    C 515,792 436,770 420,743 Z"/>
+
+  <!-- Camera neck and the soft shadow beneath it. -->
+  <ellipse cx="627" cy="730" rx="137" ry="28" fill="#e4e7eb" opacity="0.82"/>
+  <path fill="#e4e7eb" d="
+    M 527,655
+    L 727,655
+    L 727,720
+    C 727,739 686,749 627,749
+    C 568,749 527,739 527,720 Z"/>
+
+  <!-- Large circular camera face. -->
+  <path fill="#dce1e6" d="
+    M 627,180
+    C 779,180 900,294 900,437
+    C 900,580 791,696 628,696
+    C 472,696 356,584 356,438
+    C 356,297 473,180 627,180 Z"/>
+  <path fill="#f7f8fa" d="
+    M 627,184
+    C 750,184 845,297 845,438
+    C 845,579 757,691 627,691
+    C 497,691 410,579 410,438
+    C 410,297 500,184 627,184 Z"/>
+
+  <!-- Dark blue outer bezel, light blue ring, and inner lens. -->
+  <circle cx="627" cy="409" r="154" fill="#174a6e"/>
+  <circle cx="627" cy="409" r="131" fill="#74b9ff"/>
+  <circle cx="627" cy="409" r="107" fill="#2980b9"/>
+
+  <!-- Lens reflection. -->
+  <circle cx="674" cy="367" r="23" fill="#ffffff"/>
+
+  <!-- Status light. -->
+  <circle cx="627" cy="606" r="20" fill="#74b9ff"/>
+</svg>

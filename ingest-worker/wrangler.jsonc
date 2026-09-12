@@ -3,6 +3,13 @@
   "name": "ingest-worker",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-11",
+  "assets": {
+    "directory": "./public",
+    "run_worker_first": [
+      "/",
+      "/api/*"
+    ]
+  },
   // "compatibility_flags": [
   //   "nodejs_compat"
   // ],
