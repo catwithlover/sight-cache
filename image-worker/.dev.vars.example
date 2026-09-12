@@ -1,4 +1,10 @@
-ACCESS_TEAM_DOMAIN=https://your-team.cloudflareaccess.com
-ACCESS_AUD=your-access-application-aud
-MCP_ALLOWED_ORIGIN_HOSTNAMES=chatgpt.com
-MCP_MAX_LOOKBACK_DAYS=7
+LOCAL_MCP_BYPASS=true
+LOCAL_MCP_EMAIL=local@sight-cache.test
+MCP_MAX_LOOKBACK_DAYS=14
+
+# Only needed when exercising Access JWT verification locally.
+# ACCESS_TEAM_DOMAIN=https://your-team.cloudflareaccess.com
+# ACCESS_AUD=your-access-application-aud
+
+# Only needed for additional browser Origins.
+# MCP_ALLOWED_ORIGIN_HOSTNAMES=mcp-client.example.com

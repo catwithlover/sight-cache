@@ -31,20 +31,61 @@ const readMcpResponse = async (response) => {
   return JSON.parse(data)
 }
 
-const mcpRequest = (body, assertion) =>
-  new Request('http://localhost:8787/mcp', {
+const mcpRequest = (
+  body,
+  assertion,
+  url = 'http://localhost:8787/mcp',
+) => {
+  const requestUrl = new URL(url)
+  const headers = {
+    Accept: 'application/json, text/event-stream',
+    'Content-Type': 'application/json',
+    Host: requestUrl.host,
+    'MCP-Protocol-Version': '2025-06-18',
+    Origin: 'https://chatgpt.com',
+  }
+
+  if (assertion) {
+    headers.Authorization = 'Bearer oauth:opaque-access-token'
+    headers['Cf-Access-Jwt-Assertion'] = assertion
+  }
+
+  return new Request(url, {
     method: 'POST',
-    headers: {
-      Accept: 'application/json, text/event-stream',
-      Authorization: 'Bearer oauth:opaque-access-token',
-      'Cf-Access-Jwt-Assertion': assertion,
-      'Content-Type': 'application/json',
-      Host: 'localhost:8787',
-      'MCP-Protocol-Version': '2025-06-18',
-      Origin: 'https://chatgpt.com',
-    },
+    headers,
     body: JSON.stringify(body),
   })
+}
+
+test('local MCP bypass is restricted to loopback requests', async () => {
+  const initialize = {
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'initialize',
+    params: {
+      protocolVersion: '2025-06-18',
+      capabilities: {},
+      clientInfo: { name: 'sight-cache-test', version: '1.0.0' },
+    },
+  }
+  const env = {
+    LOCAL_MCP_BYPASS: 'true',
+    LOCAL_MCP_EMAIL: 'developer@example.test',
+  }
+  const localResponse = await worker.fetch(
+    mcpRequest(initialize),
+    env,
+    executionContext,
+  )
+  assert.equal(localResponse.status, 200, await localResponse.clone().text())
+
+  const nonLoopbackResponse = await worker.fetch(
+    mcpRequest(initialize, undefined, 'https://camera.example.com/mcp'),
+    env,
+    executionContext,
+  )
+  assert.equal(nonLoopbackResponse.status, 503)
+})
 
 test('Cloudflare Access protects MCP tool discovery and calls', async (t) => {
   const { privateKey, publicKey } = await generateKeyPair('RS256')

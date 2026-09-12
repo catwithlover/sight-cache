@@ -24,6 +24,8 @@ export type Bindings = Omit<
   CONTACT_SHEET_BUILDER_QUEUE: Queue<ContactSheetBuildJob>
   ACCESS_AUD?: string
   ACCESS_TEAM_DOMAIN?: string
+  LOCAL_MCP_BYPASS?: string
+  LOCAL_MCP_EMAIL?: string
   MCP_ALLOWED_ORIGIN_HOSTNAMES?: string
   MCP_MAX_LOOKBACK_DAYS?: string
 }

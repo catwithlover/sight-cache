@@ -35,7 +35,7 @@ export class ImageAccessError extends Error {
 
 const MAX_MCP_IMAGE_BYTES = 10 * 1024 * 1024
 const MINUTE_FINALIZATION_DELAY_MS = 5 * 60_000
-const DEFAULT_MAX_LOOKBACK_DAYS = 7
+const DEFAULT_MAX_LOOKBACK_DAYS = 14
 const MAX_FRAME_RANGE_MS = 5 * 60_000
 const pendingMinuteBuilds = new Map<string, Promise<void>>()
 let minuteBuildQueue = Promise.resolve()

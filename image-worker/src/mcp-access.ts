@@ -63,6 +63,19 @@ export const requireCloudflareAccess = async (
   request: Request,
   env: Bindings,
 ) => {
+  const hostname = new URL(request.url).hostname
+
+  if (
+    env.LOCAL_MCP_BYPASS?.trim().toLowerCase() === 'true' &&
+    isLoopback(hostname)
+  ) {
+    console.log('Authenticated MCP request through local bypass', {
+      email: env.LOCAL_MCP_EMAIL?.trim() || 'local@sight-cache.test',
+      subject: 'local-development',
+    })
+    return null
+  }
+
   const teamDomain = env.ACCESS_TEAM_DOMAIN?.trim()
   const audience = env.ACCESS_AUD?.trim()
 
