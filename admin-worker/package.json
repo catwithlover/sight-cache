@@ -8,9 +8,11 @@
     "dev:migrate": "npx wrangler d1 migrations apply DB --local --persist-to ../.wrangler/state",
     "prod:migrate": "npx wrangler d1 migrations apply DB --remote",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "test": "node --experimental-strip-types --test test/device-status.test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@sight-cache/worker-home-page": "*",
     "hono": "^4.13.7",
     "jose": "^6.2.12",
     "zod": "^4.6.2"

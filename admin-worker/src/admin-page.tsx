@@ -1,5 +1,6 @@
 import { raw } from 'hono/html'
 import type { AccessUser } from './access'
+import { getDevicePresence } from './device-status'
 import type { Device } from './devices'
 
 type AdminPageProps = {
@@ -7,8 +8,14 @@ type AdminPageProps = {
   user: AccessUser
 }
 
-const Timestamp = ({ value }: { value: string | null }) => {
-  if (!value) return <span>尚未連線</span>
+const Timestamp = ({
+  value,
+  emptyLabel = '尚無紀錄',
+}: {
+  value: string | null
+  emptyLabel?: string
+}) => {
+  if (!value) return <span>{emptyLabel}</span>
 
   return (
     <time dateTime={value} data-local-time>
@@ -45,17 +52,30 @@ const CaptureRoute = () => (
   </div>
 )
 
-const DeviceCard = ({ device }: { device: Device }) => {
+const DeviceCard = ({ device, nowMs }: { device: Device; nowMs: number }) => {
   const disabled = device.disabledAt !== null
+  const presence = getDevicePresence(device, nowMs)
+  const activitySource =
+    presence.activitySource === 'frame'
+      ? '影格已儲存'
+      : presence.activitySource === 'token'
+        ? 'Token 已驗證'
+        : null
 
   return (
-    <article class="device-card" data-disabled={disabled ? 'true' : 'false'}>
+    <article
+      class="device-card"
+      data-disabled={disabled ? 'true' : 'false'}
+      data-status={presence.status}
+    >
       <header class="device-heading">
         <span class="status-mark" aria-hidden="true"></span>
         <div class="device-heading-copy">
           <div class="device-title-line">
             <h3>{device.name}</h3>
-            <span class="status-label">{disabled ? '已停用' : '可使用'}</span>
+            <span class="status-label" title={presence.description}>
+              {presence.label}
+            </span>
           </div>
           <div class="device-id">
             <span>設備 ID</span>
@@ -70,11 +90,15 @@ const DeviceCard = ({ device }: { device: Device }) => {
           <dd>{device.token?.hint ?? '已撤銷'}</dd>
         </div>
         <div>
-          <dt>{disabled ? '停用時間' : '最後影格'}</dt>
-          <dd>
+          <dt>{disabled ? '停用時間' : '上次活動'}</dt>
+          <dd class={disabled ? undefined : 'activity-detail'}>
             <Timestamp
-              value={disabled ? device.disabledAt : device.lastFrameAt}
+              value={disabled ? device.disabledAt : presence.activityAt}
+              emptyLabel="尚無活動"
             />
+            {activitySource && (
+              <span class="activity-source">{activitySource}</span>
+            )}
           </dd>
         </div>
       </dl>
@@ -97,7 +121,7 @@ const DeviceCard = ({ device }: { device: Device }) => {
             data-device-action="disable"
             data-device-id={device.id}
             data-device-name={device.name}
-            aria-label={`停用 ${device.name}`}
+            aria-label={`停用設備 ${device.name}`}
           >
             停用設備
           </button>
@@ -108,8 +132,9 @@ const DeviceCard = ({ device }: { device: Device }) => {
 }
 
 export const AdminPage = ({ devices, user }: AdminPageProps) => {
-  const activeDevices = devices.filter((device) => !device.disabledAt)
+  const enabledDevices = devices.filter((device) => !device.disabledAt)
   const disabledDevices = devices.filter((device) => device.disabledAt)
+  const nowMs = Date.now()
 
   return (
     <>
@@ -155,8 +180,8 @@ export const AdminPage = ({ devices, user }: AdminPageProps) => {
 
                 <dl class="fleet-summary" aria-label="設備摘要">
                   <div>
-                    <dt>可使用</dt>
-                    <dd>{activeDevices.length}</dd>
+                    <dt>啟用中</dt>
+                    <dd>{enabledDevices.length}</dd>
                   </div>
                   <div>
                     <dt>已停用</dt>
@@ -203,11 +228,11 @@ export const AdminPage = ({ devices, user }: AdminPageProps) => {
                 <div>
                   <p class="eyebrow">存取清單</p>
                   <h2 id="registry-title">目前的觀測設備</h2>
-                  <p>查看最後影格時間，並只在必要時重新產生 Token。</p>
+                  <p>依最後影格與 Token 驗證活動掌握連線新鮮度。</p>
                 </div>
-                <div class="registry-count" aria-label={`${activeDevices.length} 台可使用`}>
-                  <strong>{activeDevices.length}</strong>
-                  <span>台可使用</span>
+                <div class="registry-count" aria-label={`${enabledDevices.length} 台啟用中`}>
+                  <strong>{enabledDevices.length}</strong>
+                  <span>台啟用中</span>
                 </div>
               </header>
 
@@ -225,15 +250,15 @@ export const AdminPage = ({ devices, user }: AdminPageProps) => {
                 </div>
               ) : (
                 <>
-                  {activeDevices.length > 0 ? (
-                    <div class="device-list" aria-label="可使用的設備">
-                      {activeDevices.map((device) => (
-                        <DeviceCard key={device.id} device={device} />
+                  {enabledDevices.length > 0 ? (
+                    <div class="device-list" aria-label="啟用中的設備">
+                      {enabledDevices.map((device) => (
+                        <DeviceCard key={device.id} device={device} nowMs={nowMs} />
                       ))}
                     </div>
                   ) : (
                     <div class="inline-empty">
-                      <strong>目前沒有可使用的設備。</strong>
+                      <strong>目前沒有啟用中的設備。</strong>
                       <span>可從上方建立新設備。</span>
                     </div>
                   )}
@@ -246,7 +271,7 @@ export const AdminPage = ({ devices, user }: AdminPageProps) => {
                       </summary>
                       <div class="device-list" aria-label="已停用的設備">
                         {disabledDevices.map((device) => (
-                          <DeviceCard key={device.id} device={device} />
+                          <DeviceCard key={device.id} device={device} nowMs={nowMs} />
                         ))}
                       </div>
                     </details>
@@ -254,10 +279,16 @@ export const AdminPage = ({ devices, user }: AdminPageProps) => {
                 </>
               )}
 
-              <p class="registry-note">
-                <span aria-hidden="true">●</span>
-                停用設備會立即撤銷目前 Token，之後無法再次啟用。
-              </p>
+              <div class="registry-notes">
+                <p class="registry-note" data-tone="info">
+                  <span aria-hidden="true">●</span>
+                  近期連線表示 10 分鐘內有影格儲存或 Token 驗證活動，不是即時心跳。
+                </p>
+                <p class="registry-note" data-tone="danger">
+                  <span aria-hidden="true">●</span>
+                  停用設備會立即撤銷目前 Token，之後無法再次啟用。
+                </p>
+              </div>
             </section>
           </main>
 

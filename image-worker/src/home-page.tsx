@@ -1,114 +1,8 @@
-import { raw } from 'hono/html'
+import { WorkerHomePage } from '@sight-cache/worker-home-page'
 
 const styles = `
-:root {
-  color-scheme: light;
-  --canvas: #f5f7f8;
-  --surface: #ffffff;
-  --ink: #26323d;
-  --muted: #626c74;
-  --line: #d2d6d8;
-  --action: #1a5fad;
-  --action-soft: #e3edfc;
-  --accent: #d8ac58;
-  --success: #287354;
-  --success-soft: #e8f4ed;
-  --font-sans: "Avenir Next", Avenir, "Segoe UI", sans-serif;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html {
-  background: var(--canvas);
-}
-
-body {
-  min-width: 320px;
-  min-height: 100vh;
-  min-height: 100dvh;
-  margin: 0;
-  color: var(--ink);
-  background: var(--canvas);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-}
-
-.page-shell {
-  display: grid;
-  min-height: 100vh;
-  min-height: 100dvh;
-  place-items: center;
-  padding: clamp(1rem, 5vw, 3rem);
-}
-
-.status-card {
-  width: min(100%, 44rem);
-  padding: clamp(2rem, 6vw, 4rem);
-  overflow: hidden;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 30px 30px 30px 11px;
-  text-align: center;
-}
-
-.brand-logo {
-  display: block;
-  width: 92px;
-  height: 92px;
-  margin: -12px auto 4px;
-}
-
-.brand-name,
-.service-name {
-  margin: 0;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.brand-name {
-  color: var(--action);
-  font-size: 0.78rem;
-}
-
-.service-name {
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 0.66rem;
-  letter-spacing: 0.18em;
-}
-
-h1 {
-  margin: 13px 0 0;
-  color: var(--ink);
-  font-size: clamp(2.25rem, 8vw, 3.6rem);
-  font-weight: 650;
-  letter-spacing: -0.05em;
-  line-height: 1.12;
-}
-
-.description {
-  width: min(100%, 31rem);
-  margin: 15px auto 0;
-  color: var(--muted);
-  font-size: 0.98rem;
-  line-height: 1.65;
-}
-
 .processing-illustration {
-  display: grid;
-  width: min(100%, 32rem);
-  min-height: 174px;
-  grid-template-columns: 96px minmax(70px, 1fr) 112px;
-  margin: 28px auto 0;
-  padding: 25px;
-  align-items: center;
-  gap: 14px;
-  background: var(--action-soft);
-  border: 1px solid #bfd0e5;
-  border-radius: 22px 22px 22px 8px;
+  --illustration-columns: 96px minmax(70px, 1fr) 112px;
 }
 
 .frame-stack {
@@ -167,32 +61,6 @@ h1 {
   left: 16px;
 }
 
-.process-track {
-  position: relative;
-  height: 56px;
-}
-
-.process-track::before {
-  position: absolute;
-  top: 27px;
-  right: 0;
-  left: 0;
-  border-top: 2px dashed #7fa4ca;
-  content: "";
-}
-
-.process-track::after {
-  position: absolute;
-  top: 22px;
-  right: -1px;
-  width: 9px;
-  height: 9px;
-  border-top: 2px solid var(--action);
-  border-right: 2px solid var(--action);
-  content: "";
-  transform: rotate(45deg);
-}
-
 .moving-frame {
   position: absolute;
   z-index: 1;
@@ -231,51 +99,6 @@ h1 {
   background: #8bb9e8;
 }
 
-.service-state {
-  display: inline-flex;
-  min-height: 36px;
-  margin-top: 28px;
-  padding: 7px 13px;
-  align-items: center;
-  gap: 9px;
-  color: var(--success);
-  background: var(--success-soft);
-  border: 1px solid #c5ddcf;
-  border-radius: 999px;
-  font-size: 0.84rem;
-  font-weight: 750;
-}
-
-.state-dot {
-  position: relative;
-  width: 8px;
-  height: 8px;
-  background: var(--success);
-  border-radius: 50%;
-}
-
-.state-dot::after {
-  position: absolute;
-  inset: -4px;
-  border: 1px solid var(--success);
-  border-radius: inherit;
-  content: "";
-  opacity: 0;
-  animation: status-breathe 2.8s ease-out infinite;
-}
-
-@keyframes status-breathe {
-  45% {
-    opacity: 0.35;
-  }
-
-  80%,
-  100% {
-    opacity: 0;
-    transform: scale(1.8);
-  }
-}
-
 @keyframes frame-sort {
   0%,
   14% {
@@ -289,22 +112,11 @@ h1 {
 }
 
 @media (max-width: 430px) {
-  .status-card {
-    padding: 2.25rem 1.5rem 2.5rem;
-    border-radius: 23px 23px 23px 9px;
-  }
-
-  .brand-logo {
-    width: 84px;
-    height: 84px;
-    margin-top: -9px;
-  }
-
   .processing-illustration {
-    min-height: 140px;
-    grid-template-columns: 72px minmax(38px, 1fr) 78px;
-    padding: 18px 14px;
-    gap: 7px;
+    --illustration-min-height: 140px;
+    --illustration-columns: 72px minmax(38px, 1fr) 78px;
+    --illustration-padding: 18px 14px;
+    --illustration-gap: 7px;
   }
 
   .frame-stack {
@@ -356,66 +168,40 @@ h1 {
     left: calc(50% - 14px);
     animation: none;
   }
-
-  .state-dot::after {
-    animation: none;
-  }
 }
 `
 
 export const HomePage = () => (
-  <>
-    {raw('<!doctype html>')}
-    <html lang="en">
-      <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="description" content="Sight Cache image service availability." />
-        <meta name="robots" content="noindex, nofollow" />
-        <meta name="theme-color" content="#f5f7f8" />
-        <title>Image Worker | Sight Cache</title>
-        <link rel="icon" href="/logo.svg" type="image/svg+xml" />
-        <style>{raw(styles)}</style>
-      </head>
-      <body>
-        <main class="page-shell">
-          <section class="status-card" aria-labelledby="page-title">
-            <img class="brand-logo" src="/logo.svg" alt="" width="92" height="92" />
-            <p class="brand-name">Sight Cache</p>
-            <p class="service-name">Image worker</p>
-            <h1 id="page-title">Service is ready</h1>
-            <p class="description">
-              Sampling stored frames and assembling hourly contact sheets.
-            </p>
-            <div class="processing-illustration" aria-hidden="true">
-              <div class="frame-stack">
-                <span class="frame-card"></span>
-                <span class="frame-card"></span>
-                <span class="frame-card"></span>
-              </div>
-              <div class="process-track">
-                <span class="moving-frame"></span>
-              </div>
-              <div class="contact-sheet">
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            </div>
-            <div class="service-state" role="status">
-              <span class="state-dot" aria-hidden="true"></span>
-              <span>Operational</span>
-            </div>
-          </section>
-        </main>
-      </body>
-    </html>
-  </>
+  <WorkerHomePage
+    documentTitle="Image Worker | Sight Cache"
+    metaDescription="Sight Cache Image Worker endpoint."
+    serviceName="Image worker"
+    description="Sample stored frames and assemble hourly contact sheets."
+    illustrationClassName="processing-illustration"
+    serviceStyles={styles}
+    illustration={
+      <>
+        <div class="frame-stack">
+          <span class="frame-card"></span>
+          <span class="frame-card"></span>
+          <span class="frame-card"></span>
+        </div>
+        <div class="flow-track">
+          <span class="moving-frame"></span>
+        </div>
+        <div class="contact-sheet">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </>
+    }
+  />
 )

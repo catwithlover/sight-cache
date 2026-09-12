@@ -18,6 +18,8 @@
   --danger: #b44646;
   --danger-dark: #8e3333;
   --danger-soft: #fbeaea;
+  --warning: #8a5a0a;
+  --warning-soft: #fff0d1;
   --disabled: #626c74;
   --disabled-soft: #eef1f3;
   --focus: #1a5fad;
@@ -689,6 +691,16 @@ button:disabled {
   box-shadow: 0 0 0 4px #d9dde0;
 }
 
+[data-status="offline"] .status-mark {
+  background: var(--warning);
+  box-shadow: 0 0 0 4px var(--warning-soft);
+}
+
+[data-status="never"] .status-mark {
+  background: var(--disabled);
+  box-shadow: 0 0 0 4px var(--disabled-soft);
+}
+
 .device-heading-copy {
   min-width: 0;
   flex: 1;
@@ -726,6 +738,16 @@ button:disabled {
 [data-disabled="true"] .status-label {
   color: #535c63;
   background: #d9dde0;
+}
+
+[data-status="offline"] .status-label {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+
+[data-status="never"] .status-label {
+  color: #535c63;
+  background: var(--disabled-soft);
 }
 
 .device-id {
@@ -777,6 +799,20 @@ button:disabled {
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.device-details dd.activity-detail {
+  display: grid;
+  overflow: visible;
+  gap: 2px;
+  white-space: normal;
+}
+
+.activity-source {
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 650;
 }
 
 .device-actions {
@@ -920,9 +956,15 @@ button:disabled {
   color: var(--muted);
 }
 
+.registry-notes {
+  display: grid;
+  gap: 7px;
+  margin-top: 22px;
+}
+
 .registry-note {
   display: flex;
-  margin: 22px 0 0;
+  margin: 0;
   align-items: flex-start;
   gap: 9px;
   color: var(--muted);
@@ -933,6 +975,10 @@ button:disabled {
   margin-top: 2px;
   color: var(--danger);
   font-size: 0.55rem;
+}
+
+.registry-note[data-tone="info"] span {
+  color: var(--action);
 }
 
 .notice,
