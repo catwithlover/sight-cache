@@ -1,5 +1,47 @@
+# Local configuration and secrets
 .env
+.env.*
+*.env
+*.env.*
+.dev.vars
+.dev.vars.*
+!.env.example
+!.env.*.example
+!*.env.example
+!*.env.*.example
+!.dev.vars.example
+!.dev.vars.*.example
+
+# Credentials and private keys
+.npmrc
+.netrc
+credentials.json
+*-credentials.json
+service-account*.json
+*-service-account.json
+secrets/
+.secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+*.ppk
+*.jks
+*.keystore
+*.kdbx
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*
+
+# Terraform secrets and state
+*.tfvars
+*.tfvars.json
+*.tfstate
+*.tfstate.*
+
+# Dependencies and generated files
 .tmp/
 .wrangler/
-node_modules
+node_modules/
 apps/image-worker/.test-build/
