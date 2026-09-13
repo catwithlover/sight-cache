@@ -56,7 +56,9 @@ The Image Worker exposes a stateless `/mcp` endpoint protected by Cloudflare Acc
 | `list_devices` | List active devices and their latest upload time |
 | `get_contact_sheet` | Return one JPEG contact sheet with exact metadata for each slot |
 | `list_frames` | List exact capture timestamps in an interval of up to five minutes |
+| `get_frame_comparison_sheet` | Compare 2–10 selected exact frames in one derived JPEG |
 | `get_original_frame` | Return the unmodified JPEG at an exact capture timestamp |
+| `create_original_frame_downloads` | When enabled, create temporary download URLs for up to 20 original frames |
 
 Hourly windows contain 60 one-minute samples across six contact sheets. Minute
 windows contain 12 five-second samples across two contact sheets and are built

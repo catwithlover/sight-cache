@@ -5,8 +5,9 @@
 </div>
 
 **Sight Cache Image Worker** turns camera frames stored by the Ingest Worker
-into compact contact sheets. It also exposes an MCP endpoint for
-reviewing devices, time windows, nearby captures, and selected original frames.
+into compact contact sheets. It also exposes an MCP endpoint for reviewing
+devices, time windows, nearby captures, selected comparisons, and original
+frames.
 
 ## How it works
 
@@ -60,12 +61,22 @@ Cron: 5 * * * * --> Queue --> hourly contact-sheet builder --> R2
 | `list_devices` | List active devices, latest upload times, and time zones |
 | `get_contact_sheet` | Return one JPEG contact sheet for a completed minute or hour, including the time and status of each thumbnail |
 | `list_frames` | List exact capture timestamps in an interval of up to five minutes |
+| `get_frame_comparison_sheet` | Return one derived JPEG comparing 2–10 exact frames in caller-specified order |
 | `get_original_frame` | Return the unmodified JPEG at an exact `capturedAt` timestamp |
 | `create_original_frame_downloads` | When enabled, return JSON with up to 20 original-frame download URLs valid for 30 minutes |
 
 The recommended inspection flow is to call `list_devices`, review every contact
 sheet for the hour, inspect suspicious minutes, list nearby frame timestamps,
-and retrieve only the original frames needed as evidence.
+optionally compare selected frames, and retrieve only the original frames
+needed as evidence.
+
+`get_frame_comparison_sheet` reads 2–10 exact frames sequentially, places them
+left-to-right and top-to-bottom in one JPEG,
+and returns the JPEG as inline MCP image content with metadata for every grid
+position. Each tile is resized and cropped to 640×360. The result is generated
+on demand and is not stored in R2; it is a comparison aid rather than an
+untouched original. Total source data is limited to 24 MiB and the inline JPEG
+is limited to 10 MiB.
 
 `create_original_frame_downloads` is not registered unless
 `MCP_ENABLE_FRAME_DOWNLOAD_URLS` is exactly `true`. It returns metadata and
@@ -78,6 +89,7 @@ reported as `available` or `unavailable`.
 | --- | --- | --- | --- |
 | Hour | `5 * * * *` cron and Queue | 60 one-minute samples | Six 2-by-5 JPEG contact sheets |
 | Minute | First MCP request | 12 five-second samples | Two 2-by-3 JPEG contact sheets |
+| Selected frames | MCP request | 2–10 exact timestamps | One derived 2-by-N JPEG, not stored |
 
 - A minute becomes available five minutes after it ends so delayed uploads are
   not permanently recorded as missing.

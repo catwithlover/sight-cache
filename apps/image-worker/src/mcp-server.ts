@@ -6,11 +6,14 @@ import {
   arrayBufferToBase64,
   createOriginalFrameDownloads,
   getContactSheetImage,
+  getFrameComparisonSheetImage,
   getOriginalFrameImage,
   ImageAccessError,
   listActiveDevices,
   listFrameMetadata,
+  MAX_FRAME_COMPARISON_FRAMES_PER_REQUEST,
   MAX_FRAME_DOWNLOADS_PER_REQUEST,
+  MIN_FRAME_COMPARISON_FRAMES_PER_REQUEST,
 } from './image-access'
 
 const deviceIdSchema = z.uuid().describe('Active camera device ID')
@@ -79,6 +82,61 @@ const originalFrameOutputSchema = z.strictObject({
   mimeType: z.literal('image/jpeg'),
   original: z.literal(true),
   timezone: timezoneSchema,
+})
+
+const frameComparisonPositionSchema = {
+  slot: z.number().int().nonnegative(),
+  row: z.number().int().nonnegative(),
+  column: z.number().int().nonnegative(),
+  capturedAt: z.iso.datetime(),
+}
+
+const availableFrameComparisonSchema = z.strictObject({
+  ...frameComparisonPositionSchema,
+  capturedAtLocal: localTimestampSchema,
+  timezone: timezoneSchema,
+  sourceByteSize: z.number().int().positive(),
+  status: z.literal('available'),
+})
+
+const unavailableFrameComparisonSchema = z.strictObject({
+  ...frameComparisonPositionSchema,
+  status: z.literal('unavailable'),
+  error: z.strictObject({
+    code: z.enum([
+      'frame_not_found',
+      'frame_invalid',
+      'frame_access_failed',
+    ]),
+    message: z.string(),
+  }),
+})
+
+const frameComparisonOutputSchema = z.strictObject({
+  deviceId: z.uuid(),
+  deviceName: z.string(),
+  generatedAt: z.iso.datetime(),
+  requestedCount: z.number().int().positive(),
+  availableCount: z.number().int().nonnegative(),
+  unavailableCount: z.number().int().nonnegative(),
+  byteSize: z.number().int().positive(),
+  mimeType: z.literal('image/jpeg'),
+  original: z.literal(false),
+  grid: z.strictObject({
+    order: z.literal('row-major'),
+    rows: z.number().int().positive(),
+    columns: z.number().int().positive(),
+    tileWidth: z.number().int().positive(),
+    tileHeight: z.number().int().positive(),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+  }),
+  frames: z.array(
+    z.discriminatedUnion('status', [
+      availableFrameComparisonSchema,
+      unavailableFrameComparisonSchema,
+    ]),
+  ),
 })
 
 const availableFrameDownloadSchema = z.strictObject({
@@ -187,7 +245,9 @@ export function createMcpServer(bindings: Bindings) {
     },
     {
       instructions:
-        'Use list_devices first. For an hourly review, inspect all six hourly sheets before drawing conclusions about the scene. Use the two minute sheets to inspect suspicious minutes, list_frames to enumerate the exact nearby captures, then get_original_frame for selected evidence.' +
+        'Use list_devices first. For an hourly review, inspect all six hourly sheets before drawing conclusions about the scene. Use the two minute sheets to inspect suspicious minutes, then list_frames to enumerate the exact nearby captures.' +
+        ' Use get_frame_comparison_sheet to compare 2 to 10 selected captures in one derived JPEG.' +
+        ' Use get_original_frame for untouched evidence.' +
         (frameDownloadUrlsEnabled
           ? ' When an execution environment needs several originals, create_original_frame_downloads returns temporary HTTPS GET URLs without embedding image data.'
           : '') +
@@ -349,6 +409,63 @@ export function createMcpServer(bindings: Bindings) {
         return {
           content: [
             { type: 'text', text: JSON.stringify(structuredContent) },
+          ],
+          structuredContent,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    'get_frame_comparison_sheet',
+    {
+      title: 'Get a frame comparison sheet',
+      description:
+        'Return one derived JPEG containing 2 to 10 exact camera frames in input order, plus UTC/device-local metadata for every grid position. Tiles are resized and cropped for visual comparison; use get_original_frame when untouched detail is required.',
+      inputSchema: z.strictObject({
+        deviceId: deviceIdSchema,
+        capturedAts: z
+          .array(timestampSchema)
+          .min(MIN_FRAME_COMPARISON_FRAMES_PER_REQUEST)
+          .max(MAX_FRAME_COMPARISON_FRAMES_PER_REQUEST)
+          .describe(
+            `Distinct exact whole-second capturedAt values in comparison order; ${MIN_FRAME_COMPARISON_FRAMES_PER_REQUEST} to ${MAX_FRAME_COMPARISON_FRAMES_PER_REQUEST}`,
+          ),
+      }),
+      outputSchema: frameComparisonOutputSchema,
+      annotations: readOnlyAnnotations,
+    },
+    async ({ deviceId, capturedAts }) => {
+      try {
+        const result = await getFrameComparisonSheetImage(
+          bindings,
+          deviceId.toLowerCase(),
+          capturedAts,
+        )
+        const structuredContent = {
+          deviceId: result.device.id,
+          deviceName: result.device.name,
+          generatedAt: result.generatedAt,
+          requestedCount: result.requestedCount,
+          availableCount: result.availableCount,
+          unavailableCount: result.unavailableCount,
+          byteSize: result.size,
+          mimeType: result.mimeType,
+          original: result.original,
+          grid: result.grid,
+          frames: result.frames,
+        }
+
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify(structuredContent) },
+            {
+              type: 'image',
+              data: result.data,
+              mimeType: result.mimeType,
+            },
           ],
           structuredContent,
         }

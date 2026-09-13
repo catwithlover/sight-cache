@@ -4,7 +4,7 @@
   <p><a href="README.md" lang="en">English</a> · 繁體中文</p>
 </div>
 
-**Sight Cache Image Worker** 會將 Ingest Worker 儲存的監視器畫面整理成精簡的縮圖總覽，並提供唯讀 MCP endpoint，供呼叫者檢視設備、時間區間、鄰近畫面與選定的原始畫面。
+**Sight Cache Image Worker** 會將 Ingest Worker 儲存的監視器畫面整理成精簡的縮圖總覽，並提供 MCP endpoint，供呼叫者檢視設備、時間區間、鄰近畫面、選定畫面的比較結果與原始畫面。
 
 ## 運作方式
 
@@ -57,10 +57,13 @@ Cron：5 * * * * --> Queue --> 每小時縮圖總覽 Builder --> R2
 | `list_devices` | 列出啟用中的設備、最近上傳時間與時區 |
 | `get_contact_sheet` | 回傳已完成分鐘或小時的一張 JPEG 縮圖總覽，以及各縮圖格的時間與狀態資訊 |
 | `list_frames` | 列出最長五分鐘區間內的精確拍攝時間 |
+| `get_frame_comparison_sheet` | 依呼叫者指定順序，將 2–10 張精確影格合成一張衍生 JPEG |
 | `get_original_frame` | 回傳精確 `capturedAt` 時間的未修改 JPEG |
 | `create_original_frame_downloads` | 啟用時回傳純 JSON；包含最多 20 個、有效 30 分鐘的原始畫面下載連結 |
 
-建議的檢視流程是先呼叫 `list_devices`、檢查該小時的每張縮圖總覽，再深入可疑的分鐘、列出鄰近畫面的時間，最後只取回需要作為證據的原始畫面。
+建議的檢視流程是先呼叫 `list_devices`、檢查該小時的每張縮圖總覽，再深入可疑的分鐘、列出鄰近畫面的時間、視需要比較選定的影格，最後只取回需要作為證據的原始畫面。
+
+`get_frame_comparison_sheet` 會依序讀取 2–10 個精確時間的影格，按由左至右、由上至下的順序排成一張 JPEG，並以 MCP inline image content 回傳，同時提供每格的 metadata。每張縮圖會縮放及裁切為 640×360；比較圖按需產生且不寫入 R2，因此只適合比較，不是未修改的原始影像。來源資料總量上限為 24 MiB，inline JPEG 上限為 10 MiB。
 
 只有當 `MCP_ENABLE_FRAME_DOWNLOAD_URLS` 精確設為 `true` 時，才會註冊 `create_original_frame_downloads`。它不嵌入圖片資料，只回傳 metadata 與 HTTPS GET URL，並將每個要求的時間標示為 `available` 或 `unavailable`。
 
@@ -70,6 +73,7 @@ Cron：5 * * * * --> Queue --> 每小時縮圖總覽 Builder --> R2
 | --- | --- | --- | --- |
 | 小時 | `5 * * * *` cron 與 Queue | 60 個一分鐘取樣格 | 六張 2×5 JPEG 縮圖總覽 |
 | 分鐘 | 第一次 MCP 請求 | 12 個五秒取樣格 | 兩張 2×3 JPEG 縮圖總覽 |
+| 選定影格 | MCP 請求 | 2–10 個精確時間 | 一張不儲存的衍生 2×N JPEG |
 
 - 一個分鐘區間會在結束五分鐘後才能使用，避免延遲上傳永久被記錄為缺少畫面
 

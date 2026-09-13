@@ -39,9 +39,9 @@ export type Bindings = Omit<
   R2_SECRET_ACCESS_KEY?: string
 }
 
-const TILE_WIDTH = 640
-const TILE_HEIGHT = 360
-const CONTACT_SHEET_COLUMNS = contactSheetLayouts.hour.columns
+export const TILE_WIDTH = 640
+export const TILE_HEIGHT = 360
+export const CONTACT_SHEET_COLUMNS = contactSheetLayouts.hour.columns
 const CONTACT_SHEET_ROWS = {
   minute: contactSheetLayouts.minute.rows,
   hour: contactSheetLayouts.hour.rows,
@@ -108,7 +108,7 @@ export const contactSheetManifestSchema = z.strictObject({
 
 export type ContactSheetManifest = z.infer<typeof contactSheetManifestSchema>
 
-const arrayBufferToStream = (buffer: ArrayBuffer) =>
+export const arrayBufferToStream = (buffer: ArrayBuffer) =>
   new ReadableStream<Uint8Array>({
     start(controller) {
       controller.enqueue(new Uint8Array(buffer))
@@ -180,6 +180,80 @@ const parseContactSheetBuildJob = (value: unknown) => {
   }
 }
 
+export const composeContactSheetImage = async (
+  env: Pick<Bindings, 'ASSETS' | 'IMAGES'>,
+  frameInputs: (ArrayBuffer | null)[],
+  rows: number,
+) => {
+  if (
+    rows < 1 ||
+    rows > CONTACT_SHEET_ROWS.hour ||
+    frameInputs.length < 1 ||
+    frameInputs.length > rows * CONTACT_SHEET_COLUMNS
+  ) {
+    throw new Error('Contact sheet dimensions are invalid')
+  }
+
+  const baseImage = await env.ASSETS.fetch(CONTACT_SHEET_BASE_URL)
+
+  if (!baseImage.ok || !baseImage.body) {
+    throw new Error(
+      `Contact sheet base image is unavailable (${baseImage.status})`,
+    )
+  }
+
+  // The base is already output-sized, so each pass is reserved for tile work.
+  let transformer = env.IMAGES.input(
+    arrayBufferToStream(await baseImage.arrayBuffer()),
+  )
+  let tilesInPass = 0
+
+  for (let index = 0; index < frameInputs.length; index += 1) {
+    const frameInput = frameInputs[index]
+
+    if (!frameInput) continue
+
+    // A tile resize plus draw uses two of the 10 allowed transformations.
+    if (tilesInPass === MAX_CONTACT_SHEET_TILES_PER_PASS) {
+      const intermediate = await transformer.output({ format: 'image/png' })
+      transformer = env.IMAGES.input(intermediate.image())
+      tilesInPass = 0
+    }
+
+    transformer = transformer.draw(
+      env.IMAGES.input(arrayBufferToStream(frameInput)).transform({
+        width: TILE_WIDTH,
+        height: TILE_HEIGHT,
+        fit: 'cover',
+      }),
+      {
+        left: (index % CONTACT_SHEET_COLUMNS) * TILE_WIDTH,
+        top: Math.floor(index / CONTACT_SHEET_COLUMNS) * TILE_HEIGHT,
+      },
+    )
+    tilesInPass += 1
+  }
+
+  if (rows !== CONTACT_SHEET_ROWS.hour) {
+    if (tilesInPass === MAX_CONTACT_SHEET_TILES_PER_PASS) {
+      const intermediate = await transformer.output({ format: 'image/png' })
+      transformer = env.IMAGES.input(intermediate.image())
+    }
+
+    transformer = transformer.transform({
+      width: CONTACT_SHEET_WIDTH,
+      height: rows * TILE_HEIGHT,
+      fit: 'cover',
+      gravity: 'top',
+    })
+  }
+
+  return transformer.output({
+    format: 'image/jpeg',
+    quality: 85,
+  })
+}
+
 const renderContactSheet = async (
   env: Bindings,
   deviceId: string,
@@ -190,15 +264,6 @@ const renderContactSheet = async (
   samples: FrameSample[],
   rows: number,
 ) => {
-  const baseImage = await env.ASSETS.fetch(CONTACT_SHEET_BASE_URL)
-
-  if (!baseImage.ok || !baseImage.body) {
-    throw new Error(
-      `Contact sheet base image is unavailable (${baseImage.status})`,
-    )
-  }
-
-  const baseImageBytes = await baseImage.arrayBuffer()
   const frameInputs: (ArrayBuffer | null)[] = []
   let sourceBytes = 0
 
@@ -228,56 +293,8 @@ const renderContactSheet = async (
     frameInputs.push(await frameObject.arrayBuffer())
   }
 
-  // The base is already output-sized, so each pass is reserved for tile work.
-  let transformer = env.IMAGES.input(arrayBufferToStream(baseImageBytes))
-  let selectedCount = 0
-  let tilesInPass = 0
-
-  for (let index = 0; index < samples.length; index += 1) {
-    const frameInput = frameInputs[index]
-
-    if (!frameInput) continue
-
-    // A tile resize plus draw uses two of the 10 allowed transformations.
-    if (tilesInPass === MAX_CONTACT_SHEET_TILES_PER_PASS) {
-      const intermediate = await transformer.output({ format: 'image/png' })
-      transformer = env.IMAGES.input(intermediate.image())
-      tilesInPass = 0
-    }
-
-    transformer = transformer.draw(
-      env.IMAGES.input(arrayBufferToStream(frameInput)).transform({
-        width: TILE_WIDTH,
-        height: TILE_HEIGHT,
-        fit: 'cover',
-      }),
-      {
-        left: (index % CONTACT_SHEET_COLUMNS) * TILE_WIDTH,
-        top: Math.floor(index / CONTACT_SHEET_COLUMNS) * TILE_HEIGHT,
-      },
-    )
-    selectedCount += 1
-    tilesInPass += 1
-  }
-
-  if (rows !== CONTACT_SHEET_ROWS.hour) {
-    if (tilesInPass === MAX_CONTACT_SHEET_TILES_PER_PASS) {
-      const intermediate = await transformer.output({ format: 'image/png' })
-      transformer = env.IMAGES.input(intermediate.image())
-    }
-
-    transformer = transformer.transform({
-      width: CONTACT_SHEET_WIDTH,
-      height: rows * TILE_HEIGHT,
-      fit: 'cover',
-      gravity: 'top',
-    })
-  }
-
-  const result = await transformer.output({
-    format: 'image/jpeg',
-    quality: 85,
-  })
+  const result = await composeContactSheetImage(env, frameInputs, rows)
+  const selectedCount = frameInputs.filter((frame) => frame !== null).length
 
   await env.BUCKET.put(key, result.image(), {
     httpMetadata: {

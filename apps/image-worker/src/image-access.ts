@@ -5,8 +5,13 @@ import {
 } from '@sight-cache/db/read'
 import { AwsClient } from 'aws4fetch'
 import {
+  arrayBufferToStream,
   buildContactSheets,
+  composeContactSheetImage,
+  CONTACT_SHEET_COLUMNS,
   readContactSheetManifest,
+  TILE_HEIGHT,
+  TILE_WIDTH,
   type Bindings,
 } from './contact-sheets'
 import {
@@ -39,12 +44,16 @@ const MAX_MCP_IMAGE_BYTES = 10 * 1024 * 1024
 const MINUTE_FINALIZATION_DELAY_MS = 5 * 60_000
 const DEFAULT_MAX_LOOKBACK_DAYS = 14
 const MAX_FRAME_RANGE_MS = 5 * 60_000
+export const MIN_FRAME_COMPARISON_FRAMES_PER_REQUEST = 2
+export const MAX_FRAME_COMPARISON_FRAMES_PER_REQUEST = 10
+const MAX_FRAME_COMPARISON_SOURCE_BYTES = 24 * 1024 * 1024
 export const MAX_FRAME_DOWNLOADS_PER_REQUEST = 20
 const FRAME_DOWNLOAD_URL_TTL_SECONDS = 30 * 60
 const wholeSecondTimestampPattern =
   /T\d{2}:\d{2}:\d{2}(?:\.0+)?(?:Z|[+-]\d{2}:\d{2})$/u
 const pendingMinuteBuilds = new Map<string, Promise<void>>()
 let minuteBuildQueue = Promise.resolve()
+let frameComparisonInProgress = false
 
 type FrameDownloadSigningConfig = {
   accessKeyId: string
@@ -194,6 +203,30 @@ const parseOriginalFrameTimestamp = (
   }
 
   return capturedAt
+}
+
+const parseDistinctOriginalFrameTimestamps = (
+  env: Bindings,
+  capturedAtValues: string[],
+  now: number,
+) => {
+  const capturedAts = capturedAtValues.map((value) =>
+    parseOriginalFrameTimestamp(env, value, now),
+  )
+  const capturedAtInstants = new Set<number>()
+
+  for (const capturedAt of capturedAts) {
+    if (capturedAtInstants.has(capturedAt.getTime())) {
+      throw new ImageAccessError(
+        'captured_at_duplicate',
+        'capturedAts must not contain duplicate capture instants.',
+      )
+    }
+
+    capturedAtInstants.add(capturedAt.getTime())
+  }
+
+  return capturedAts
 }
 
 const readJpeg = async (object: R2ObjectBody, missingCode: string) => {
@@ -449,6 +482,279 @@ export const getOriginalFrameImage = async (
   }
 }
 
+const buildFrameComparisonSheetImage = async (
+  env: Bindings,
+  deviceId: string,
+  capturedAtValues: string[],
+) => {
+  if (
+    capturedAtValues.length < MIN_FRAME_COMPARISON_FRAMES_PER_REQUEST ||
+    capturedAtValues.length > MAX_FRAME_COMPARISON_FRAMES_PER_REQUEST
+  ) {
+    throw new ImageAccessError(
+      'frame_comparison_count_invalid',
+      `capturedAts must contain between ${MIN_FRAME_COMPARISON_FRAMES_PER_REQUEST} and ${MAX_FRAME_COMPARISON_FRAMES_PER_REQUEST} timestamps.`,
+    )
+  }
+
+  const device = await getActiveDevice(env.DB, deviceId)
+
+  if (!device) {
+    throw new ImageAccessError(
+      'device_not_found',
+      'The active device was not found.',
+    )
+  }
+
+  const capturedAts = parseDistinctOriginalFrameTimestamps(
+    env,
+    capturedAtValues,
+    Date.now(),
+  )
+  const frameInputs: (ArrayBuffer | null)[] = []
+  const frames: Array<
+    | {
+        slot: number
+        row: number
+        column: number
+        capturedAt: string
+        capturedAtLocal: string
+        timezone: string
+        sourceByteSize: number
+        status: 'available'
+      }
+    | {
+        slot: number
+        row: number
+        column: number
+        capturedAt: string
+        status: 'unavailable'
+        error: {
+          code: 'frame_not_found' | 'frame_invalid' | 'frame_access_failed'
+          message: string
+        }
+      }
+  > = []
+  let sourceBytes = 0
+
+  // Consume each R2 body before opening the next connection.
+  for (let slot = 0; slot < capturedAts.length; slot += 1) {
+    const capturedAt = capturedAts[slot]
+    const requestedAt = capturedAt.toISOString()
+    const position = {
+      slot,
+      row: Math.floor(slot / CONTACT_SHEET_COLUMNS),
+      column: slot % CONTACT_SHEET_COLUMNS,
+    }
+
+    try {
+      const object = await env.BUCKET.get(buildImageKey(deviceId, capturedAt))
+
+      if (!object) {
+        frameInputs.push(null)
+        frames.push({
+          ...position,
+          capturedAt: requestedAt,
+          status: 'unavailable',
+          error: {
+            code: 'frame_not_found',
+            message: 'No original frame exists at that exact timestamp.',
+          },
+        })
+        continue
+      }
+
+      const metadata = parseFrameMetadata(object.customMetadata)
+      const mimeType =
+        object.httpMetadata?.contentType
+          ?.split(';', 1)[0]
+          .trim()
+          .toLowerCase() ?? 'image/jpeg'
+
+      if (
+        !metadata ||
+        metadata.capturedAtMs !== capturedAt.getTime() ||
+        object.size <= 0 ||
+        mimeType !== 'image/jpeg'
+      ) {
+        await object.body.cancel()
+        frameInputs.push(null)
+        frames.push({
+          ...position,
+          capturedAt: requestedAt,
+          status: 'unavailable',
+          error: {
+            code: 'frame_invalid',
+            message: 'The stored frame is not a valid original JPEG.',
+          },
+        })
+        continue
+      }
+
+      if (sourceBytes + object.size > MAX_FRAME_COMPARISON_SOURCE_BYTES) {
+        await object.body.cancel()
+        throw new ImageAccessError(
+          'frame_comparison_source_too_large',
+          `Comparison sheet source images exceed ${MAX_FRAME_COMPARISON_SOURCE_BYTES} bytes.`,
+        )
+      }
+
+      let frameInput: ArrayBuffer
+
+      try {
+        frameInput = await object.arrayBuffer()
+      } catch (error) {
+        try {
+          await object.body.cancel()
+        } catch {
+          // The failed read may have already disturbed the body.
+        }
+        throw error
+      }
+
+      let imageInfo: ImageInfoResponse
+
+      try {
+        imageInfo = await env.IMAGES.info(arrayBufferToStream(frameInput))
+      } catch (error) {
+        const imagesErrorCode =
+          typeof error === 'object' &&
+          error !== null &&
+          'code' in error &&
+          typeof error.code === 'number'
+            ? error.code
+            : null
+        const frameInvalid =
+          imagesErrorCode === 9412 || imagesErrorCode === 9413
+        frameInputs.push(null)
+        frames.push({
+          ...position,
+          capturedAt: requestedAt,
+          status: 'unavailable',
+          error: {
+            code: frameInvalid ? 'frame_invalid' : 'frame_access_failed',
+            message: frameInvalid
+              ? 'The stored frame is not a valid original JPEG.'
+              : 'The frame could not be validated. Retry the request.',
+          },
+        })
+        continue
+      }
+
+      const format = imageInfo.format.trim().toLowerCase()
+
+      if (!['image/jpeg', 'jpeg', 'jpg'].includes(format)) {
+        frameInputs.push(null)
+        frames.push({
+          ...position,
+          capturedAt: requestedAt,
+          status: 'unavailable',
+          error: {
+            code: 'frame_invalid',
+            message: 'The stored frame is not a valid original JPEG.',
+          },
+        })
+        continue
+      }
+
+      sourceBytes += object.size
+      frameInputs.push(frameInput)
+      frames.push({
+        ...position,
+        capturedAt: metadata.capturedAt,
+        capturedAtLocal: metadata.capturedAtLocal,
+        timezone: metadata.timezone,
+        sourceByteSize: object.size,
+        status: 'available',
+      })
+    } catch (error) {
+      if (error instanceof ImageAccessError) throw error
+
+      console.error('Could not read frame for comparison sheet', {
+        deviceId,
+        capturedAt: requestedAt,
+        errorType: error instanceof Error ? error.name : typeof error,
+      })
+      frameInputs.push(null)
+      frames.push({
+        ...position,
+        capturedAt: requestedAt,
+        status: 'unavailable',
+        error: {
+          code: 'frame_access_failed',
+          message: 'The frame could not be accessed. Retry the request.',
+        },
+      })
+    }
+  }
+
+  const rows = Math.ceil(frameInputs.length / CONTACT_SHEET_COLUMNS)
+  const result = await composeContactSheetImage(env, frameInputs, rows)
+  const mimeType = result.contentType().split(';', 1)[0].trim().toLowerCase()
+  const bytes = await new Response(result.image()).arrayBuffer()
+
+  if (mimeType !== 'image/jpeg' || bytes.byteLength === 0) {
+    throw new ImageAccessError(
+      'frame_comparison_invalid',
+      'The generated comparison sheet is not a valid JPEG image.',
+    )
+  }
+
+  if (bytes.byteLength > MAX_MCP_IMAGE_BYTES) {
+    throw new ImageAccessError(
+      'image_too_large',
+      `The image exceeds the ${MAX_MCP_IMAGE_BYTES}-byte MCP response limit.`,
+    )
+  }
+
+  const availableCount = frames.filter(
+    (frame) => frame.status === 'available',
+  ).length
+
+  return {
+    device,
+    generatedAt: new Date().toISOString(),
+    requestedCount: frames.length,
+    availableCount,
+    unavailableCount: frames.length - availableCount,
+    original: false as const,
+    mimeType: 'image/jpeg' as const,
+    size: bytes.byteLength,
+    data: arrayBufferToBase64(bytes),
+    grid: {
+      order: 'row-major' as const,
+      rows,
+      columns: CONTACT_SHEET_COLUMNS,
+      tileWidth: TILE_WIDTH,
+      tileHeight: TILE_HEIGHT,
+      width: CONTACT_SHEET_COLUMNS * TILE_WIDTH,
+      height: rows * TILE_HEIGHT,
+    },
+    frames,
+  }
+}
+
+export const getFrameComparisonSheetImage = (
+  env: Bindings,
+  deviceId: string,
+  capturedAtValues: string[],
+) => {
+  if (frameComparisonInProgress) {
+    throw new ImageAccessError(
+      'frame_comparison_busy',
+      'Another comparison sheet is being generated. Retry the request.',
+    )
+  }
+
+  frameComparisonInProgress = true
+
+  return buildFrameComparisonSheetImage(env, deviceId, capturedAtValues).finally(
+    () => {
+      frameComparisonInProgress = false
+    },
+  )
+}
+
 export const createOriginalFrameDownloads = async (
   env: Bindings,
   deviceId: string,
@@ -482,21 +788,11 @@ export const createOriginalFrameDownloads = async (
   }
 
   const signingAt = new Date(Math.floor(Date.now() / 1000) * 1000)
-  const capturedAts = capturedAtValues.map((value) =>
-    parseOriginalFrameTimestamp(env, value, signingAt.getTime()),
+  const capturedAts = parseDistinctOriginalFrameTimestamps(
+    env,
+    capturedAtValues,
+    signingAt.getTime(),
   )
-  const capturedAtInstants = new Set<number>()
-
-  for (const capturedAt of capturedAts) {
-    if (capturedAtInstants.has(capturedAt.getTime())) {
-      throw new ImageAccessError(
-        'captured_at_duplicate',
-        'capturedAts must not contain duplicate capture instants.',
-      )
-    }
-
-    capturedAtInstants.add(capturedAt.getTime())
-  }
 
   const signer = new AwsClient({
     accessKeyId: signingConfig.accessKeyId,

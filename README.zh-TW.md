@@ -56,7 +56,9 @@ Image Worker 提供 stateless `/mcp` endpoint，並由 Cloudflare Access Managed
 | `list_devices` | 列出啟用中的設備與最近上傳時間 |
 | `get_contact_sheet` | 回傳一張 JPEG 縮圖總覽，以及各縮圖格的精確資訊 |
 | `list_frames` | 列出最長五分鐘區間內的精確拍攝時間 |
+| `get_frame_comparison_sheet` | 將 2–10 張選定的精確影格合成一張衍生 JPEG 供比較 |
 | `get_original_frame` | 回傳指定拍攝時間的未修改 JPEG |
+| `create_original_frame_downloads` | 啟用時為最多 20 張原始影格建立短效下載連結 |
 
 每個小時區間包含 60 個一分鐘取樣格，分為 6 張縮圖總覽。每個分鐘區間包含 12 個 5 秒取樣格，分為 2 張縮圖總覽，並在 5 分鐘的完成等待時間結束後，於第一次請求時建立。
 

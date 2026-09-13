@@ -303,6 +303,7 @@ test('Cloudflare Access protects MCP tool discovery and calls', async (t) => {
       'list_devices',
       'get_contact_sheet',
       'list_frames',
+      'get_frame_comparison_sheet',
       'get_original_frame',
     ],
   )
@@ -378,6 +379,10 @@ test('Cloudflare Access protects MCP tool discovery and calls', async (t) => {
   const rangeEndAt = new Date(Math.floor(Date.now() / 60_000) * 60_000)
   const rangeBeginAt = new Date(rangeEndAt.getTime() - 30_000)
   const capturedAt = new Date(rangeBeginAt.getTime() + 5_000).toISOString()
+  const comparisonCapturedAts = Array.from({ length: 6 }, (_, index) =>
+    new Date(rangeBeginAt.getTime() + (index + 1) * 5_000).toISOString(),
+  )
+  const comparisonCapturedAt = comparisonCapturedAts[1]
   env.BUCKET = {
     async list() {
       return {
@@ -485,6 +490,9 @@ test('Cloudflare Access protects MCP tool discovery and calls', async (t) => {
     sheets,
   }
   const jpeg = Uint8Array.from([0xff, 0xd8, 0xff, 0xd9])
+  let frameBodyCancelCount = 0
+  let frameReadFailureAt = null
+  let frameSize = jpeg.byteLength
   env.BUCKET.get = async (key) => {
     if (key.endsWith('/manifest.json')) {
       return {
@@ -496,6 +504,7 @@ test('Cloudflare Access protects MCP tool discovery and calls', async (t) => {
 
     if (key === sheets[1].key) {
       return {
+        body: new Response(jpeg).body,
         size: jpeg.byteLength,
         httpMetadata: { contentType: 'image/jpeg' },
         async arrayBuffer() {
@@ -504,16 +513,30 @@ test('Cloudflare Access protects MCP tool discovery and calls', async (t) => {
       }
     }
 
-    if (key.startsWith(`frames/${device.id}/`)) {
+    const frameCapturedAt =
+      comparisonCapturedAts.find(
+        (value) => key === frameKeyFor(device.id, value),
+      ) ?? null
+
+    if (frameCapturedAt) {
       return {
-        size: jpeg.byteLength,
+        body: {
+          async cancel() {
+            frameBodyCancelCount += 1
+          },
+        },
+        size: frameSize,
         httpMetadata: { contentType: 'image/jpeg' },
         customMetadata: {
-          capturedAt,
-          capturedAtLocal: toTaipeiTimestamp(capturedAt),
+          capturedAt: frameCapturedAt,
+          capturedAtLocal: toTaipeiTimestamp(frameCapturedAt),
           timezone: 'Asia/Taipei',
         },
         async arrayBuffer() {
+          if (frameCapturedAt === frameReadFailureAt) {
+            throw new Error('R2 body read failed')
+          }
+
           return jpeg.buffer
         },
       }
@@ -595,6 +618,389 @@ test('Cloudflare Access protects MCP tool discovery and calls', async (t) => {
     original: true,
     timezone: 'Asia/Taipei',
   })
+
+  const imageCalls = []
+  let imageInfoCall = 0
+  let invalidImageInfoCall = null
+  let imageInfoPause = null
+  let notifyImageInfoStarted = null
+  const createImageTransformer = () => ({
+    draw(_image, options) {
+      imageCalls.push({ operation: 'draw', options })
+      return this
+    },
+    transform(options) {
+      imageCalls.push({ operation: 'transform', options })
+      return this
+    },
+    async output(options) {
+      imageCalls.push({ operation: 'output', options })
+      return {
+        contentType() {
+          return options.format === 'image/jpeg' ? 'image/jpeg' : 'image/png'
+        },
+        image() {
+          return new Response(jpeg).body
+        },
+      }
+    },
+  })
+  Object.assign(env, {
+    ASSETS: {
+      async fetch() {
+        return new Response(jpeg, {
+          headers: { 'Content-Type': 'image/png' },
+        })
+      },
+    },
+    IMAGES: {
+      async info() {
+        imageInfoCall += 1
+        imageCalls.push({ operation: 'info' })
+        notifyImageInfoStarted?.()
+        notifyImageInfoStarted = null
+
+        if (imageInfoPause) await imageInfoPause
+
+        if (imageInfoCall === invalidImageInfoCall) {
+          throw new Error('Invalid image data')
+        }
+
+        return { format: 'image/jpeg', width: 1, height: 1 }
+      },
+      input() {
+        imageCalls.push({ operation: 'input' })
+        return createImageTransformer()
+      },
+    },
+  })
+  const comparisonToolsResponse = await worker.fetch(
+    mcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 7,
+        method: 'tools/list',
+        params: {},
+      },
+      assertion,
+    ),
+    env,
+    executionContext,
+  )
+  const comparisonTools = await readMcpResponse(comparisonToolsResponse)
+  const frameComparisonTool = comparisonTools.result.tools.find(
+    ({ name }) => name === 'get_frame_comparison_sheet',
+  )
+  assert(frameComparisonTool)
+  assert.equal(frameComparisonTool.inputSchema.properties.capturedAts.minItems, 2)
+  assert.equal(frameComparisonTool.inputSchema.properties.capturedAts.maxItems, 10)
+  assert.equal(frameComparisonTool.annotations.readOnlyHint, true)
+
+  const comparisonResponse = await worker.fetch(
+    mcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 8,
+        method: 'tools/call',
+        params: {
+          name: 'get_frame_comparison_sheet',
+          arguments: {
+            deviceId: device.id,
+            capturedAts: comparisonCapturedAts,
+          },
+        },
+      },
+      assertion,
+    ),
+    env,
+    executionContext,
+  )
+  assert.equal(comparisonResponse.status, 200)
+  const comparison = await readMcpResponse(comparisonResponse)
+  assert.equal(
+    comparison.result.isError,
+    undefined,
+    comparison.result.content?.[0]?.text,
+  )
+  assert.deepEqual(
+    JSON.parse(comparison.result.content[0].text),
+    comparison.result.structuredContent,
+  )
+  assert.deepEqual(
+    comparison.result.content.find(({ type }) => type === 'image'),
+    {
+      type: 'image',
+      data: '/9j/2Q==',
+      mimeType: 'image/jpeg',
+    },
+  )
+  assert.deepEqual(comparison.result.structuredContent, {
+    deviceId: device.id,
+    deviceName: device.name,
+    generatedAt: comparison.result.structuredContent.generatedAt,
+    requestedCount: 6,
+    availableCount: 6,
+    unavailableCount: 0,
+    byteSize: jpeg.byteLength,
+    mimeType: 'image/jpeg',
+    original: false,
+    grid: {
+      order: 'row-major',
+      rows: 3,
+      columns: 2,
+      tileWidth: 640,
+      tileHeight: 360,
+      width: 1_280,
+      height: 1_080,
+    },
+    frames: comparisonCapturedAts.map((value, slot) => ({
+      slot,
+      row: Math.floor(slot / 2),
+      column: slot % 2,
+      capturedAt: value,
+      capturedAtLocal: toTaipeiTimestamp(value),
+      timezone: 'Asia/Taipei',
+      sourceByteSize: jpeg.byteLength,
+      status: 'available',
+    })),
+  })
+  assert.deepEqual(
+    imageCalls
+      .filter(({ operation }) => operation === 'draw')
+      .map(({ options }) => options),
+    [
+      { left: 0, top: 0 },
+      { left: 640, top: 0 },
+      { left: 0, top: 360 },
+      { left: 640, top: 360 },
+      { left: 0, top: 720 },
+      { left: 640, top: 720 },
+    ],
+  )
+  assert.equal(
+    imageCalls.some(
+      ({ operation, options }) =>
+        operation === 'output' && options.format === 'image/png',
+    ),
+    true,
+  )
+  assert.equal(
+    imageCalls.some(
+      ({ operation, options }) =>
+        operation === 'output' &&
+        options.format === 'image/jpeg' &&
+        options.quality === 85,
+    ),
+    true,
+  )
+
+  let releaseImageInfo
+  imageInfoPause = new Promise((resolve) => {
+    releaseImageInfo = resolve
+  })
+  const imageInfoStarted = new Promise((resolve) => {
+    notifyImageInfoStarted = resolve
+  })
+  const pendingComparisonResponse = worker.fetch(
+    mcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 9,
+        method: 'tools/call',
+        params: {
+          name: 'get_frame_comparison_sheet',
+          arguments: {
+            deviceId: device.id,
+            capturedAts: [capturedAt, comparisonCapturedAt],
+          },
+        },
+      },
+      assertion,
+    ),
+    env,
+    executionContext,
+  )
+  await imageInfoStarted
+
+  const busyComparisonResponse = await worker.fetch(
+    mcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 10,
+        method: 'tools/call',
+        params: {
+          name: 'get_frame_comparison_sheet',
+          arguments: {
+            deviceId: device.id,
+            capturedAts: [capturedAt, comparisonCapturedAt],
+          },
+        },
+      },
+      assertion,
+    ),
+    env,
+    executionContext,
+  )
+  const busyComparison = await readMcpResponse(busyComparisonResponse)
+  assert.equal(busyComparison.result.isError, true)
+  assert.equal(
+    JSON.parse(busyComparison.result.content[0].text).error.code,
+    'frame_comparison_busy',
+  )
+
+  releaseImageInfo()
+  imageInfoPause = null
+  const completedPendingComparison = await readMcpResponse(
+    await pendingComparisonResponse,
+  )
+  assert.equal(
+    completedPendingComparison.result.isError,
+    undefined,
+    completedPendingComparison.result.content?.[0]?.text,
+  )
+
+  invalidImageInfoCall = imageInfoCall + 2
+  const partialComparisonResponse = await worker.fetch(
+    mcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 11,
+        method: 'tools/call',
+        params: {
+          name: 'get_frame_comparison_sheet',
+          arguments: {
+            deviceId: device.id,
+            capturedAts: [capturedAt, comparisonCapturedAt],
+          },
+        },
+      },
+      assertion,
+    ),
+    env,
+    executionContext,
+  )
+  const partialComparison = await readMcpResponse(partialComparisonResponse)
+  assert.equal(
+    partialComparison.result.isError,
+    undefined,
+    partialComparison.result.content?.[0]?.text,
+  )
+  assert.equal(partialComparison.result.structuredContent.availableCount, 1)
+  assert.equal(partialComparison.result.structuredContent.unavailableCount, 1)
+  assert.deepEqual(partialComparison.result.structuredContent.frames[1], {
+    slot: 1,
+    row: 0,
+    column: 1,
+    capturedAt: comparisonCapturedAt,
+    status: 'unavailable',
+    error: {
+      code: 'frame_access_failed',
+      message: 'The frame could not be validated. Retry the request.',
+    },
+  })
+  invalidImageInfoCall = null
+
+  frameSize = 9 * 1024 * 1024
+  frameReadFailureAt = comparisonCapturedAts[1]
+  const cancelCountBeforeReadFailure = frameBodyCancelCount
+  const readFailureComparisonResponse = await worker.fetch(
+    mcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 12,
+        method: 'tools/call',
+        params: {
+          name: 'get_frame_comparison_sheet',
+          arguments: {
+            deviceId: device.id,
+            capturedAts: comparisonCapturedAts.slice(0, 3),
+          },
+        },
+      },
+      assertion,
+    ),
+    env,
+    executionContext,
+  )
+  const readFailureComparison = await readMcpResponse(
+    readFailureComparisonResponse,
+  )
+  assert.equal(
+    readFailureComparison.result.isError,
+    undefined,
+    readFailureComparison.result.content?.[0]?.text,
+  )
+  assert.equal(readFailureComparison.result.structuredContent.availableCount, 2)
+  assert.equal(
+    readFailureComparison.result.structuredContent.unavailableCount,
+    1,
+  )
+  assert.equal(
+    readFailureComparison.result.structuredContent.frames[1].error.code,
+    'frame_access_failed',
+  )
+  assert.equal(frameBodyCancelCount, cancelCountBeforeReadFailure + 1)
+
+  frameReadFailureAt = null
+  frameSize = 13 * 1024 * 1024
+  const cancelCountBeforeSourceLimit = frameBodyCancelCount
+  const sourceLimitComparisonResponse = await worker.fetch(
+    mcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 13,
+        method: 'tools/call',
+        params: {
+          name: 'get_frame_comparison_sheet',
+          arguments: {
+            deviceId: device.id,
+            capturedAts: comparisonCapturedAts.slice(0, 2),
+          },
+        },
+      },
+      assertion,
+    ),
+    env,
+    executionContext,
+  )
+  const sourceLimitComparison = await readMcpResponse(
+    sourceLimitComparisonResponse,
+  )
+  assert.equal(sourceLimitComparison.result.isError, true)
+  assert.equal(
+    JSON.parse(sourceLimitComparison.result.content[0].text).error.code,
+    'frame_comparison_source_too_large',
+  )
+  assert.equal(frameBodyCancelCount, cancelCountBeforeSourceLimit + 1)
+  frameSize = jpeg.byteLength
+
+  const duplicateComparisonResponse = await worker.fetch(
+    mcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 14,
+        method: 'tools/call',
+        params: {
+          name: 'get_frame_comparison_sheet',
+          arguments: {
+            deviceId: device.id,
+            capturedAts: [capturedAt, toTaipeiTimestamp(capturedAt)],
+          },
+        },
+      },
+      assertion,
+    ),
+    env,
+    executionContext,
+  )
+  const duplicateComparison = await readMcpResponse(
+    duplicateComparisonResponse,
+  )
+  assert.equal(duplicateComparison.result.isError, true)
+  assert.equal(
+    JSON.parse(duplicateComparison.result.content[0].text).error.code,
+    'captured_at_duplicate',
+  )
 
   env.MCP_ENABLE_FRAME_DOWNLOAD_URLS = 'TRUE'
   const nonExactFlagToolsResponse = await worker.fetch(
