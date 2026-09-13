@@ -6,7 +6,7 @@
   <p>English · <a href="README.zh-TW.md" lang="zh-Hant-TW">繁體中文</a></p>
 </div>
 
-**Sight Cache** — A serverless camera history pipeline built on Cloudflare that gives AI agents a compact, inspectable visual memory through MCP.
+**Sight Cache** — Visual memory infrastructure for AI agents, built on Cloudflare and MCP.
 
 ## How it works
 
