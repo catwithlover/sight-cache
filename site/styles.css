@@ -438,48 +438,26 @@ h1 {
   min-width: 0;
   aspect-ratio: 1.38;
   overflow: hidden;
-  background: #c6dbf1;
+  color: #d89a50;
+  background: linear-gradient(180deg, #c6dbf1 0 57%, #b6cee4 57% 59.4%, #a2c0d8 59.4% 100%);
   border-radius: 7px 7px 7px 3px;
 }
 
-.frame::before {
+.frame-scene {
   position: absolute;
-  right: -12%;
-  bottom: -15%;
-  left: -12%;
-  height: 58%;
-  background: #7fa8c3;
-  clip-path: polygon(0 100%, 0 44%, 18% 58%, 35% 17%, 55% 66%, 73% 30%, 100% 57%, 100% 100%);
-  content: "";
-}
-
-.frame::after {
-  position: absolute;
-  right: 10%;
-  bottom: 12%;
-  width: 12%;
-  height: 37%;
-  background: #eef4f7;
-  border-radius: 6px 6px 2px 2px;
-  content: "";
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .frame:nth-child(3n + 2) {
-  background: #b7d1ea;
-}
-
-.frame:nth-child(3n + 2)::before {
-  background: #7399b5;
-  clip-path: polygon(0 100%, 0 59%, 25% 30%, 40% 65%, 63% 8%, 78% 52%, 100% 24%, 100% 100%);
+  color: #d3924a;
+  background: linear-gradient(180deg, #c1d7ef 0 57%, #b1cae1 57% 59.4%, #9dbdd6 59.4% 100%);
 }
 
 .frame:nth-child(4n) {
-  background: #d4e3f2;
-}
-
-.frame:nth-child(4n)::after {
-  right: 62%;
-  height: 30%;
+  color: #dda159;
+  background: linear-gradient(180deg, #cbe0f4 0 57%, #bbd2e7 57% 59.4%, #a8c6dd 59.4% 100%);
 }
 
 .frame-focus {
@@ -490,12 +468,12 @@ h1 {
 .frame-focus span {
   position: absolute;
   z-index: 2;
-  top: 48%;
-  left: 48%;
-  width: 10px;
-  height: 10px;
+  top: 33%;
+  left: 43%;
+  width: 8px;
+  height: 8px;
   background: var(--accent);
-  border: 3px solid var(--surface-warm);
+  border: 2px solid var(--surface-warm);
   border-radius: 50%;
   animation: event-pulse 2.4s ease-in-out infinite;
 }
@@ -739,7 +717,7 @@ h1 {
 
 .tool-list li {
   display: grid;
-  grid-template-columns: minmax(10rem, 0.75fr) 1fr;
+  grid-template-columns: minmax(15.25rem, 0.85fr) 1fr;
   gap: 20px;
   padding: 14px 0;
   border-bottom: 1px solid #34475b;
@@ -749,6 +727,7 @@ h1 {
   color: #8dc3f5;
   font-family: var(--font-mono);
   font-size: 0.75rem;
+  overflow-wrap: anywhere;
 }
 
 .tool-list span {
@@ -1211,6 +1190,11 @@ h1 {
 
   .tools-layout {
     gap: 3.5rem;
+  }
+
+  .tool-list li {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 }
 

@@ -99,25 +99,153 @@
             <div
               class="memory-board"
               role="img"
-              aria-label="一小時的監視器畫面被整理成縮圖總覽，其中 10 點 42 分的移動事件已為 AI Agent 標示"
+              aria-label="一小時的貓砂盆監視畫面被整理成縮圖總覽，其中 10 點 42 分的移動事件已為 AI Agent 標示"
             >
+              <svg class="scene-sprite" width="0" height="0" aria-hidden="true">
+                <defs>
+                  <g id="scene-tray">
+                    <ellipse cx="50" cy="66" rx="19" ry="2" fill="#97b7d0" />
+                    <rect x="32.5" y="45" width="35" height="20" rx="4" fill="#cfdfee" />
+                    <rect x="35" y="46.8" width="30" height="10" rx="2.8" fill="#b6cde1" />
+                    <rect x="36.2" y="48" width="27.6" height="7.6" rx="2.2" fill="#eef4f9" />
+                    <circle cx="42" cy="52.6" r="0.9" fill="#c6d7e7" />
+                    <circle cx="50.4" cy="54.4" r="0.6" fill="#c6d7e7" />
+                    <circle cx="56.8" cy="50.2" r="1" fill="#c6d7e7" />
+                    <circle cx="48" cy="49.6" r="0.5" fill="#c6d7e7" />
+                    <circle cx="60.6" cy="53.4" r="0.7" fill="#c6d7e7" />
+                    <circle cx="37" cy="68.6" r="1" fill="#d9e8f4" />
+                    <circle cx="52" cy="69.4" r="1.1" fill="#d9e8f4" />
+                    <circle cx="61" cy="67.8" r="0.8" fill="#d9e8f4" />
+                  </g>
+                  <g id="cat-sit" fill="currentColor">
+                    <ellipse cx="0" cy="-1.4" rx="9" ry="1.6" fill="#97b7d0" />
+                    <path
+                      d="M-11 -4 C-17.5 -4.8 -21 -10 -18 -13.8"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-width="2.8"
+                    />
+                    <ellipse cx="-6.5" cy="-9.5" rx="8.6" ry="9.5" />
+                    <ellipse cx="-0.5" cy="-10" rx="5.6" ry="9" />
+                    <ellipse cx="3.4" cy="-1.9" rx="3.4" ry="1.9" />
+                    <ellipse cx="1.6" cy="-8" rx="2.6" ry="4.8" fill="#f2cb8e" />
+                    <circle cx="4.6" cy="-19.5" r="5.8" />
+                    <polygon points="5.8,-23.6 11,-28.2 8.8,-22" />
+                    <polygon points="0.2,-21.7 1.6,-28.6 4.8,-23.6" />
+                    <circle cx="6.9" cy="-20" r="1" fill="#6f4a1a" />
+                  </g>
+                  <g id="cat-walk" fill="currentColor">
+                    <ellipse cx="0" cy="-1.2" rx="12" ry="1.5" fill="#97b7d0" />
+                    <path
+                      d="M-9.5 -12 C-15 -13.5 -17.5 -18 -15 -21.5"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-width="2.6"
+                    />
+                    <ellipse cx="0" cy="-10.5" rx="10.5" ry="5.6" />
+                    <path
+                      d="M8 -7.4 L10 -1.2"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-width="2.6"
+                    />
+                    <path
+                      d="M-5 -7.4 L-7.2 -1.2"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-width="2.6"
+                    />
+                    <circle cx="10.4" cy="-14" r="4.7" />
+                    <polygon points="11.8,-17.4 15.4,-21.4 14.6,-14.8" />
+                    <polygon points="7.6,-15.4 10.2,-21.8 12,-17.8" />
+                    <circle cx="12.4" cy="-14.4" r="0.9" fill="#6f4a1a" />
+                  </g>
+                  <g id="cat-peek" fill="currentColor">
+                    <path d="M-7 1 L-7 -5 Q-7 -10.5 -1 -10.5 L2 -10.5 Q7.5 -10.5 7.5 -5 L7.5 1 Z" />
+                    <rect x="-4.8" y="-0.5" width="3" height="6.4" rx="1.5" />
+                    <rect x="1.8" y="-0.5" width="3" height="6.4" rx="1.5" />
+                    <circle cx="2.6" cy="-14.2" r="5.5" />
+                    <polygon points="5.6,-17.4 8.8,-22.8 7.2,-15.2" />
+                    <polygon points="-1,-16.8 0.4,-23.2 3.8,-18.6" />
+                    <circle cx="5" cy="-14.6" r="0.95" fill="#6f4a1a" />
+                  </g>
+                </defs>
+              </svg>
               <div class="board-bar" aria-hidden="true">
                 <span class="board-time">10:00–11:00 UTC</span>
                 <span class="board-count">總覽 05 / 06</span>
               </div>
               <div class="contact-sheet" aria-hidden="true">
-                <span class="frame"></span>
-                <span class="frame"></span>
-                <span class="frame"></span>
-                <span class="frame"></span>
-                <span class="frame"></span>
-                <span class="frame"></span>
-                <span class="frame"></span>
-                <span class="frame"></span>
-                <span class="frame frame-focus"><span></span></span>
-                <span class="frame"></span>
-                <span class="frame"></span>
-                <span class="frame"></span>
+                <span class="frame">
+                  <svg class="frame-scene" viewBox="0 0 100 72" preserveAspectRatio="none">
+                    <use href="#scene-tray" />
+                  </svg>
+                </span>
+                <span class="frame">
+                  <svg class="frame-scene" viewBox="0 0 100 72" preserveAspectRatio="none">
+                    <use href="#scene-tray" />
+                  </svg>
+                </span>
+                <span class="frame">
+                  <svg class="frame-scene" viewBox="0 0 100 72" preserveAspectRatio="none">
+                    <use href="#scene-tray" />
+                    <use href="#cat-walk" transform="translate(1 66)" />
+                  </svg>
+                </span>
+                <span class="frame">
+                  <svg class="frame-scene" viewBox="0 0 100 72" preserveAspectRatio="none">
+                    <use href="#scene-tray" />
+                  </svg>
+                </span>
+                <span class="frame">
+                  <svg class="frame-scene" viewBox="0 0 100 72" preserveAspectRatio="none">
+                    <use href="#scene-tray" />
+                    <use href="#cat-sit" transform="translate(21 66)" />
+                  </svg>
+                </span>
+                <span class="frame">
+                  <svg class="frame-scene" viewBox="0 0 100 72" preserveAspectRatio="none">
+                    <use href="#scene-tray" />
+                  </svg>
+                </span>
+                <span class="frame">
+                  <svg class="frame-scene" viewBox="0 0 100 72" preserveAspectRatio="none">
+                    <use href="#scene-tray" />
+                    <use href="#cat-sit" transform="translate(79 66) scale(-1 1)" />
+                  </svg>
+                </span>
+                <span class="frame">
+                  <svg class="frame-scene" viewBox="0 0 100 72" preserveAspectRatio="none">
+                    <use href="#scene-tray" />
+                  </svg>
+                </span>
+                <span class="frame frame-focus">
+                  <svg class="frame-scene" viewBox="0 0 100 72" preserveAspectRatio="none">
+                    <use href="#scene-tray" />
+                    <use href="#cat-peek" transform="translate(50 52)" />
+                  </svg>
+                  <span></span>
+                </span>
+                <span class="frame">
+                  <svg class="frame-scene" viewBox="0 0 100 72" preserveAspectRatio="none">
+                    <use href="#scene-tray" />
+                  </svg>
+                </span>
+                <span class="frame">
+                  <svg class="frame-scene" viewBox="0 0 100 72" preserveAspectRatio="none">
+                    <use href="#scene-tray" />
+                    <use href="#cat-walk" transform="translate(99 66)" />
+                  </svg>
+                </span>
+                <span class="frame">
+                  <svg class="frame-scene" viewBox="0 0 100 72" preserveAspectRatio="none">
+                    <use href="#scene-tray" />
+                  </svg>
+                </span>
               </div>
             </div>
             <div class="agent-finding" aria-hidden="true">
@@ -144,8 +272,8 @@
       <aside class="facts" aria-label="系統重點">
         <ul class="page-shell fact-list">
           <li><strong>5 秒</strong><span>原始影格的預設擷取間隔</span></li>
-          <li><strong>60 格</strong><span>每個完整小時的一分鐘取樣數</span></li>
-          <li><strong>4 項工具</strong><span>從總覽走到證據的 MCP 流程</span></li>
+          <li><strong>60 格</strong><span>每個完整小時六張總覽的一分鐘取樣</span></li>
+          <li><strong>6 項工具</strong><span>從總覽走到證據的 MCP 流程</span></li>
         </ul>
       </aside>
 
@@ -157,7 +285,7 @@
               <h2 id="pipeline-title">保留證據，減少逐格尋找。</h2>
             </div>
             <p>
-              Agent 先看精簡的小時總覽，再縮小到可疑的分鐘區間；只有在能補足證據時，才讀取原始影格。
+              Agent 先看精簡的小時總覽，再縮小到可疑的分鐘區間、比較值得細看的影格；只有在能補足證據時，才讀取原始影格。
             </p>
           </div>
 
@@ -181,7 +309,7 @@
             <li>
               <span class="flow-number">03</span>
               <h3>整理已完成的時間區間</h3>
-              <p>排程 Queue 建立每小時總覽；短分鐘總覽則只在真正查詢時建立。</p>
+              <p>排程 Queue 建立每小時總覽；分鐘總覽則在五分鐘的完成等待後，於第一次查詢時建立。</p>
               <span class="flow-symbol" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M4 10h16M10 4v16M15 10v10" /></svg>
               </span>
@@ -201,16 +329,18 @@
       <section class="tools-section" id="tools" aria-labelledby="tools-title">
         <div class="page-shell tools-layout">
           <div class="tool-copy">
-            <p class="eyebrow">四項工具</p>
+            <p class="eyebrow">六項工具</p>
             <h2 id="tools-title">從總覽一路找到精確證據。</h2>
             <p>
-              檢視步驟保持明確：列出設備、掃過縮圖總覽、找到鄰近時間戳，最後只開啟重要的原始畫面。
+              檢視步驟保持明確：列出設備、掃過縮圖總覽、找到鄰近時間戳、比較值得細看的影格，最後只開啟重要的原始畫面。
             </p>
             <ul class="tool-list">
-              <li><code>list_devices</code><span>找出啟用中的攝影機</span></li>
+              <li><code>list_devices</code><span>找出啟用中的攝影機與時區</span></li>
               <li><code>get_contact_sheet</code><span>檢視一分鐘或一小時</span></li>
               <li><code>list_frames</code><span>找出精確拍攝時間</span></li>
+              <li><code>get_frame_comparison_sheet</code><span>將 2–10 張影格並排比較</span></li>
               <li><code>get_original_frame</code><span>取得未修改的原始證據</span></li>
+              <li><code>create_original_frame_downloads</code><span>啟用時可產生最多 20 張原始影格的下載連結</span></li>
             </ul>
           </div>
 
@@ -219,16 +349,20 @@
               <span class="console-dots"><i></i><i></i><i></i></span>
               <span>get_contact_sheet</span>
             </div>
-            <pre><code><span class="code-muted">// 一份精簡總覽，附帶精確影格資訊</span>
+            <pre><code><span class="code-muted">// 一張總覽，附帶每格的精確資訊</span>
 {
-  <span class="code-key">"device"</span>: <span class="code-string">"front-entry"</span>,
-  <span class="code-key">"window"</span>: <span class="code-string">"2026-09-13T10:00:00Z"</span>,
-  <span class="code-key">"sheet"</span>: <span class="code-string">"05"</span>,
-  <span class="code-key">"samples"</span>: [
+  <span class="code-key">"deviceName"</span>: <span class="code-string">"front-entry"</span>,
+  <span class="code-key">"unit"</span>: <span class="code-string">"hour"</span>,
+  <span class="code-key">"beginAt"</span>: <span class="code-string">"2026-09-13T10:00:00Z"</span>,
+  <span class="code-key">"sheetNumber"</span>: 5,
+  <span class="code-key">"sheetCount"</span>: 6,
+  <span class="code-key">"slots"</span>: [
     {
+      <span class="code-key">"slot"</span>: 3,
       <span class="code-key">"capturedAt"</span>: <span class="code-string">"2026-09-13T10:42:03Z"</span>,
-      <span class="code-key">"status"</span>: <span class="code-string">"captured"</span>,
-      <span class="code-key">"slot"</span>: 3
+      <span class="code-key">"capturedAtLocal"</span>: <span class="code-string">"2026-09-13T18:42:03+08:00"</span>,
+      <span class="code-key">"deltaMs"</span>: 3000,
+      <span class="code-key">"status"</span>: <span class="code-string">"captured"</span>
     }
   ]
 }</code></pre>
@@ -263,7 +397,7 @@
               </span>
               <h3>Cloudflare 上</h3>
               <p>三個 Worker 負責驗證、儲存、整理、排程，以及提供影像歷史。</p>
-              <ul class="service-tags"><li>Workers</li><li>D1</li><li>R2</li><li>Images</li><li>Queues</li></ul>
+              <ul class="service-tags"><li>Workers</li><li>D1</li><li>R2</li><li>Images</li><li>Queues</li><li>Cron</li></ul>
             </article>
             <article class="architecture-column">
               <span class="architecture-icon" aria-hidden="true">
@@ -290,6 +424,7 @@
             <li><strong>保護管理與 MCP 路由：</strong>分別設定相符的 Cloudflare Access Application。</li>
             <li><strong>只儲存 Token 雜湊：</strong>完整 Collector Token 僅在核發時顯示一次。</li>
             <li><strong>設定 R2 lifecycle rule：</strong>讓影像保留時間符合你的實際需求。</li>
+            <li><strong>影格下載連結預設為關閉：</strong>啟用後，連結將於 30 分鐘後過期。</li>
           </ul>
         </div>
       </section>
