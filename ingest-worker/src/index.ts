@@ -22,6 +22,7 @@ type AppEnv = {
 const imageFilenamePattern =
   /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d):([0-5]\d)([+-])(\d{2})(\d{2})\.jpg$/u
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
+const MAX_CAPTURE_CLOCK_SKEW_MS = 5 * 60 * 1000
 
 const parseImageFilename = (filename: string) => {
   const match = imageFilenamePattern.exec(filename)
@@ -90,12 +91,13 @@ const validateIngestHeaders = validator('header', (headers, c) => {
     )
   }
 
-  if (capturedAt.getTime() > Date.now()) {
+  if (capturedAt.getTime() > Date.now() + MAX_CAPTURE_CLOCK_SKEW_MS) {
     return c.json(
       {
         error: {
           code: 'captured_at_future',
-          message: 'x-filename capture time must not be in the future.',
+          message:
+            'x-filename capture time must not be more than 5 minutes in the future.',
         },
       },
       400,

@@ -51,7 +51,7 @@ Authorization: Bearer scd_<token-id>.<secret>
 | `Authorization` | A valid collector bearer token |
 | `Content-Type` | `image/jpeg` |
 | `Content-Length` | A positive integer; the image must not exceed 10 MiB |
-| `X-Filename` | A non-future capture timestamp in `YYYY-MM-DDTHH:mm:ss±HHMM.jpg` format |
+| `X-Filename` | A capture timestamp in `YYYY-MM-DDTHH:mm:ss±HHMM.jpg` format; up to five minutes of future clock skew is accepted |
 
 The request body must contain the JPEG bytes. For example:
 

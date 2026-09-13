@@ -65,10 +65,22 @@ const executionContext = {
   waitUntil() {},
 }
 
-test('rejects capture timestamps in the future before writing to R2', async () => {
-  const { env, putCalls } = createEnvironment(null)
+test('accepts capture timestamps within the clock skew allowance', async () => {
+  const { env, putCalls } = createEnvironment({ uploaded: new Date() })
   const response = await worker.fetch(
     ingestRequest(filenameAt(60_000)),
+    env,
+    executionContext,
+  )
+
+  assert.equal(response.status, 200)
+  assert.equal(putCalls.length, 1)
+})
+
+test('rejects capture timestamps beyond the clock skew allowance', async () => {
+  const { env, putCalls } = createEnvironment(null)
+  const response = await worker.fetch(
+    ingestRequest(filenameAt(6 * 60_000)),
     env,
     executionContext,
   )
@@ -77,7 +89,8 @@ test('rejects capture timestamps in the future before writing to R2', async () =
   assert.deepEqual(await response.json(), {
     error: {
       code: 'captured_at_future',
-      message: 'x-filename capture time must not be in the future.',
+      message:
+        'x-filename capture time must not be more than 5 minutes in the future.',
     },
   })
   assert.equal(putCalls.length, 0)

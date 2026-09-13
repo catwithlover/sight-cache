@@ -51,7 +51,7 @@ Authorization: Bearer scd_<token-id>.<secret>
 | `Authorization` | 有效的 Collector Bearer Token |
 | `Content-Type` | `image/jpeg` |
 | `Content-Length` | 正整數；影像大小不得超過 10 MiB |
-| `X-Filename` | `YYYY-MM-DDTHH:mm:ss±HHMM.jpg` 格式且不得在未來的拍攝時間 |
+| `X-Filename` | `YYYY-MM-DDTHH:mm:ss±HHMM.jpg` 格式的拍攝時間；允許最多五分鐘的未來時鐘偏差 |
 
 Request body 必須是 JPEG bytes。例如：
 
