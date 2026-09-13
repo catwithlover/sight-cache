@@ -1,11 +1,11 @@
 <div align="center">
   <h1>Sight Cache Image Worker</h1>
-  <p><em>Build camera contact sheets and expose protected, read-only MCP tools.</em></p>
+  <p><em>Build camera contact sheets and expose protected MCP tools.</em></p>
   <p>English · <a href="README.zh-TW.md" lang="zh-Hant-TW">繁體中文</a></p>
 </div>
 
 **Sight Cache Image Worker** turns camera frames stored by the Ingest Worker
-into compact contact sheets. It also exposes a read-only MCP endpoint for
+into compact contact sheets. It also exposes an MCP endpoint for
 reviewing devices, time windows, nearby captures, and selected original frames.
 
 ## How it works

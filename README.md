@@ -30,7 +30,7 @@ R2 original JPEGs ----------------------------'  `--> R2 contact sheets + manife
 | [`apps/collector/`](apps/collector/README.md) | Node.js or Docker | Capture and upload RTSP frames |
 | [`apps/admin-worker/`](apps/admin-worker/README.md) | Cloudflare Workers | Manage devices, issue Collector Tokens, rotate credentials, and disable access |
 | [`apps/ingest-worker/`](apps/ingest-worker/README.md) | Cloudflare Workers | Authenticate collectors, validate image uploads, and store original frames |
-| [`apps/image-worker/`](apps/image-worker/README.md) | Cloudflare Workers | Build contact sheets and expose protected, read-only MCP inspection tools |
+| [`apps/image-worker/`](apps/image-worker/README.md) | Cloudflare Workers | Build contact sheets and expose protected MCP inspection tools |
 
 ## Cloudflare services
 

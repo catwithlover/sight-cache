@@ -30,7 +30,7 @@ R2 原始 JPEG ----------------------------------'  `--> R2 縮圖總覽與索�
 | [`apps/collector/`](apps/collector/README.zh-TW.md) | Node.js or Docker | 擷取 RTSP 畫面並上傳 |
 | [`apps/admin-worker/`](apps/admin-worker/README.zh-TW.md) | Cloudflare Workers | 管理設備、核發 Collector Token、輪替憑證與停用存取權限 |
 | [`apps/ingest-worker/`](apps/ingest-worker/README.zh-TW.md) | Cloudflare Workers | 驗證 Collector、檢查影像上傳、儲存原始畫面 |
-| [`apps/image-worker/`](apps/image-worker/README.zh-TW.md) | Cloudflare Workers | 建立縮圖總覽，並提供受保護的 MCP 唯讀檢視工具 |
+| [`apps/image-worker/`](apps/image-worker/README.zh-TW.md) | Cloudflare Workers | 建立縮圖總覽，並提供受保護的 MCP 檢視工具 |
 
 ## Cloudflare 服務
 
