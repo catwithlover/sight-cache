@@ -1,4 +1,9 @@
 import {
+  getActiveDevice as getActiveDeviceRecord,
+  listActiveDevices as listActiveDeviceRecords,
+  type ActiveDevice as ActiveDeviceRecord,
+} from '@sight-cache/db/read'
+import {
   buildContactSheets,
   readContactSheetManifest,
   type Bindings,
@@ -10,12 +15,6 @@ import {
   samplingLayouts,
   type SamplingUnit,
 } from './frame-sampling'
-
-type DeviceRow = {
-  id: string
-  name: string
-  last_frame_at: string | null
-}
 
 export type ActiveDevice = {
   id: string
@@ -49,37 +48,20 @@ const enqueueMinuteBuild = <T>(build: () => Promise<T>) => {
   return result
 }
 
-const toDevice = (row: DeviceRow): ActiveDevice => ({
-  id: row.id,
-  name: row.name,
-  lastUploadAt: row.last_frame_at,
+const toDevice = (device: ActiveDeviceRecord): ActiveDevice => ({
+  id: device.id,
+  name: device.name,
+  lastUploadAt: device.lastFrameAt,
 })
 
 export const listActiveDevices = async (db: D1Database) => {
-  const result = await db
-    .prepare(
-      `SELECT id, name, last_frame_at
-       FROM devices
-       WHERE disabled_at IS NULL
-       ORDER BY lower(name), created_at DESC`,
-    )
-    .all<DeviceRow>()
-
-  return result.results.map(toDevice)
+  const devices = await listActiveDeviceRecords(db)
+  return devices.map(toDevice)
 }
 
 export const getActiveDevice = async (db: D1Database, deviceId: string) => {
-  const row = await db
-    .prepare(
-      `SELECT id, name, last_frame_at
-       FROM devices
-       WHERE id = ?1
-         AND disabled_at IS NULL`,
-    )
-    .bind(deviceId)
-    .first<DeviceRow>()
-
-  return row ? toDevice(row) : null
+  const device = await getActiveDeviceRecord(db, deviceId)
+  return device ? toDevice(device) : null
 }
 
 export const parseCompletedWindow = (

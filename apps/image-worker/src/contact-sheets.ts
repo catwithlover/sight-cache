@@ -1,4 +1,8 @@
 import {
+  activeDeviceExists,
+  listActiveDeviceIds,
+} from '@sight-cache/db/read'
+import {
   buildImagePrefix,
   deviceIdPattern,
   listFrames,
@@ -28,10 +32,6 @@ export type Bindings = Omit<
   LOCAL_MCP_EMAIL?: string
   MCP_ALLOWED_ORIGIN_HOSTNAMES?: string
   MCP_MAX_LOOKBACK_DAYS?: string
-}
-
-type DeviceIdRow = {
-  id: string
 }
 
 const TILE_WIDTH = 640
@@ -507,16 +507,11 @@ export const enqueuePreviousHourContactSheets = async (
   env: Bindings,
 ) => {
   const beginAt = getPreviousHourBeginAt(controller.scheduledTime)
-  const result = await env.DB.prepare(
-    `SELECT id
-     FROM devices
-     WHERE disabled_at IS NULL
-     ORDER BY id`,
-  ).all<DeviceIdRow>()
-  const jobs: ContactSheetBuildJob[] = result.results.map((device) => ({
+  const deviceIds = await listActiveDeviceIds(env.DB)
+  const jobs: ContactSheetBuildJob[] = deviceIds.map((deviceId) => ({
     version: CONTACT_SHEET_SCHEMA_VERSION,
     type: 'build-hourly-contact-sheets',
-    deviceId: device.id,
+    deviceId,
     beginAt: beginAt.toISOString(),
   }))
 
@@ -541,16 +536,8 @@ export const consumeContactSheetJobs = async (
   for (const message of batch.messages) {
     try {
       const { deviceId, beginAt } = parseContactSheetBuildJob(message.body)
-      const device = await env.DB.prepare(
-        `SELECT id
-         FROM devices
-         WHERE id = ?1
-           AND disabled_at IS NULL`,
-      )
-        .bind(deviceId)
-        .first<DeviceIdRow>()
 
-      if (!device) {
+      if (!(await activeDeviceExists(env.DB, deviceId))) {
         console.warn('Skipped contact sheet job for unavailable device', {
           messageId: message.id,
           deviceId,

@@ -3,10 +3,10 @@ import { bearerAuth } from 'hono/bearer-auth'
 import { bodyLimit } from 'hono/body-limit'
 import { validator } from 'hono/validator'
 import {
-  getDeviceByToken,
+  authenticateDeviceToken,
   updateDeviceLastFrameAt,
-  type AccessDevice,
-} from './devices'
+  type AuthenticatedDevice,
+} from '@sight-cache/db/ingest'
 import { HomePage } from './home-page'
 
 type AppEnv = {
@@ -15,7 +15,7 @@ type AppEnv = {
     DB: D1Database
   }
   Variables: {
-    accessDevice: AccessDevice
+    accessDevice: AuthenticatedDevice
   }
 }
 
@@ -174,7 +174,7 @@ app.use(
   '/api/*',
   bearerAuth<AppEnv>({
     verifyToken: async (token, c) => {
-      const device = await getDeviceByToken(c.env.DB, token)
+      const device = await authenticateDeviceToken(c.env.DB, token)
 
       if (!device) {
         return false

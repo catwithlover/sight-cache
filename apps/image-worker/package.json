@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --persist-to ../../.wrangler/state",
     "deploy": "wrangler deploy --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "mcp-inspect": "npx @modelcontextprotocol/inspector@latest",
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@sight-cache/worker-home-page": "*",
+    "@sight-cache/db": "*",
     "@modelcontextprotocol/server": "2.0.0",
     "agents": "^0.23.0",
     "hono": "^4.13.7",

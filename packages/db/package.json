@@ -1,0 +1,22 @@
+{
+  "name": "@sight-cache/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./admin": "./src/admin.ts",
+    "./ingest": "./src/ingest.ts",
+    "./read": "./src/read.ts"
+  },
+  "imports": {
+    "#token": "./src/internal/token.ts"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test test/db.test.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260911.1",
+    "typescript": "^7.0.2"
+  }
+}

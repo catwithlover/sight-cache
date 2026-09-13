@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@sight-cache/db": "*",
     "@sight-cache/worker-home-page": "*",
     "hono": "^4.13.7",
     "jose": "^6.2.12",

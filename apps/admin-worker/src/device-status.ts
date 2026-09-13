@@ -1,4 +1,4 @@
-import type { Device } from './devices'
+import type { Device } from '@sight-cache/db/admin'
 
 export const RECENT_DEVICE_ACTIVITY_MS = 10 * 60 * 1000
 

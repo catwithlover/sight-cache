@@ -1,15 +1,14 @@
 import { Hono } from 'hono'
-import { requireAccess, type AppEnv } from './access'
-import { AdminPage } from './admin-page'
-import { HomePage } from './home-page'
 import {
   createDevice,
-  createDeviceInputSchema,
-  deviceIdSchema,
   disableDevice,
   listDevices,
   rotateDeviceToken,
-} from './devices'
+} from '@sight-cache/db/admin'
+import { requireAccess, type AppEnv } from './access'
+import { AdminPage } from './admin-page'
+import { HomePage } from './home-page'
+import { createDeviceInputSchema, deviceIdSchema } from './devices'
 
 const app = new Hono<AppEnv>()
 

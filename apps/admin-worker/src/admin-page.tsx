@@ -1,7 +1,7 @@
 import { raw } from 'hono/html'
+import type { Device } from '@sight-cache/db/admin'
 import type { AccessUser } from './access'
 import { getDevicePresence } from './device-status'
-import type { Device } from './devices'
 
 type AdminPageProps = {
   devices: Device[]

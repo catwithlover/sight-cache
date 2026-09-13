@@ -1,4 +1,6 @@
-export type AccessDevice = {
+import { hashDeviceToken } from '#token'
+
+export type AuthenticatedDevice = {
   id: string
   name: string
   lastFrameAt: string | null
@@ -15,22 +17,11 @@ type DeviceTokenRow = {
 const LAST_USED_UPDATE_INTERVAL_MS = 5 * 60 * 1000
 const LAST_FRAME_UPDATE_INTERVAL_MS = 5 * 1000
 
-const sha256 = async (value: string) => {
-  const digest = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(value),
-  )
-
-  return Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, '0'),
-  ).join('')
-}
-
-export const getDeviceByToken = async (
+export const authenticateDeviceToken = async (
   db: D1Database,
   token: string,
-): Promise<AccessDevice | null> => {
-  const secretHash = await sha256(token)
+): Promise<AuthenticatedDevice | null> => {
+  const secretHash = await hashDeviceToken(token)
   const row = await db
     .prepare(
       `SELECT
@@ -85,7 +76,7 @@ export const getDeviceByToken = async (
 
 export const updateDeviceLastFrameAt = async (
   db: D1Database,
-  device: AccessDevice,
+  device: AuthenticatedDevice,
   storedAt: Date,
 ) => {
   const storedAtTime = storedAt.getTime()
