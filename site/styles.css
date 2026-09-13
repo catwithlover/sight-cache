@@ -525,13 +525,25 @@ h1 {
   color: #6e4b08;
   background: var(--accent-soft);
   border-radius: 11px 11px 11px 4px;
-  font-family: var(--font-mono);
-  font-size: 0.83rem;
-  font-weight: 850;
 }
 
-.agent-finding strong,
-.agent-finding span {
+.finding-mark svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.finding-mark svg circle:not(:first-of-type) {
+  fill: currentColor;
+  stroke: none;
+}
+
+.agent-finding div > strong,
+.agent-finding div > span {
   display: block;
 }
 
