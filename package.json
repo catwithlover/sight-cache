@@ -2,10 +2,7 @@
   "name": "sight-cache",
   "private": true,
   "workspaces": [
-    "collector",
-    "admin-worker",
-    "ingest-worker",
-    "image-worker",
+    "apps/*",
     "packages/*"
   ],
   "scripts": {

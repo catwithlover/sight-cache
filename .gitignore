@@ -2,4 +2,4 @@
 .tmp/
 .wrangler/
 node_modules
-image-worker/.test-build/
+apps/image-worker/.test-build/

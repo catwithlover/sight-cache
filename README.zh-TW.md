@@ -27,10 +27,10 @@ R2 原始 JPEG ----------------------------------'  `--> R2 縮圖總覽與索�
 
 | 元件 | 執行環境 | 職責 |
 | --- | --- | --- |
-| [`collector/`](collector/README.zh-TW.md) | Node.js or Docker | 擷取 RTSP 畫面並上傳 |
-| [`admin-worker/`](admin-worker/README.zh-TW.md) | Cloudflare Workers | 管理設備、核發 Collector Token、輪替憑證與停用存取權限 |
-| [`ingest-worker/`](ingest-worker/README.zh-TW.md) | Cloudflare Workers | 驗證 Collector、檢查影像上傳、儲存原始畫面 |
-| [`image-worker/`](image-worker/README.zh-TW.md) | Cloudflare Workers | 建立縮圖總覽，並提供受保護的 MCP 唯讀檢視工具 |
+| [`apps/collector/`](apps/collector/README.zh-TW.md) | Node.js or Docker | 擷取 RTSP 畫面並上傳 |
+| [`apps/admin-worker/`](apps/admin-worker/README.zh-TW.md) | Cloudflare Workers | 管理設備、核發 Collector Token、輪替憑證與停用存取權限 |
+| [`apps/ingest-worker/`](apps/ingest-worker/README.zh-TW.md) | Cloudflare Workers | 驗證 Collector、檢查影像上傳、儲存原始畫面 |
+| [`apps/image-worker/`](apps/image-worker/README.zh-TW.md) | Cloudflare Workers | 建立縮圖總覽，並提供受保護的 MCP 唯讀檢視工具 |
 
 ## Cloudflare 服務
 
@@ -111,10 +111,10 @@ npm run prod:migrate --workspace admin-worker
 npm run dev --workspace admin-worker
 npm run dev --workspace ingest-worker
 npm run dev --workspace image-worker
-npm start --workspace collector
+npm start --workspace @sight-cache/collector
 ```
 
-透過 Admin Worker 建立設備、在 Collector Token 顯示時加以保存，再以`collector/.env.example` 為範本設定 `collector/.env`，填入 Ingest URL、Token 與 RTSP URL。各元件的詳細設定與行為請參閱對應文件。
+透過 Admin Worker 建立設備、在 Collector Token 顯示時加以保存，再以 `apps/collector/.env.example` 為範本設定 `apps/collector/.env`，填入 Ingest URL、Token 與 RTSP URL。各元件的詳細設定與行為請參閱對應文件。
 
 完成特定帳號的設定並套用遠端 D1 migration 後，部署三個 Worker：
 
@@ -132,7 +132,7 @@ npm run deploy --workspace image-worker
 
 ## 文件
 
-- [Collector](collector/README.zh-TW.md)
-- [Admin Worker](admin-worker/README.zh-TW.md)
-- [Ingest Worker](ingest-worker/README.zh-TW.md)
-- [Image Worker 與 MCP](image-worker/README.zh-TW.md)
+- [Collector](apps/collector/README.zh-TW.md)
+- [Admin Worker](apps/admin-worker/README.zh-TW.md)
+- [Ingest Worker](apps/ingest-worker/README.zh-TW.md)
+- [Image Worker 與 MCP](apps/image-worker/README.zh-TW.md)

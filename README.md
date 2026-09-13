@@ -27,10 +27,10 @@ R2 original JPEGs ----------------------------'  `--> R2 contact sheets + manife
 
 | Component | Runtime | Responsibility |
 | --- | --- | --- |
-| [`collector/`](collector/README.md) | Node.js or Docker | Capture and upload RTSP frames |
-| [`admin-worker/`](admin-worker/README.md) | Cloudflare Workers | Manage devices, issue Collector Tokens, rotate credentials, and disable access |
-| [`ingest-worker/`](ingest-worker/README.md) | Cloudflare Workers | Authenticate collectors, validate image uploads, and store original frames |
-| [`image-worker/`](image-worker/README.md) | Cloudflare Workers | Build contact sheets and expose protected, read-only MCP inspection tools |
+| [`apps/collector/`](apps/collector/README.md) | Node.js or Docker | Capture and upload RTSP frames |
+| [`apps/admin-worker/`](apps/admin-worker/README.md) | Cloudflare Workers | Manage devices, issue Collector Tokens, rotate credentials, and disable access |
+| [`apps/ingest-worker/`](apps/ingest-worker/README.md) | Cloudflare Workers | Authenticate collectors, validate image uploads, and store original frames |
+| [`apps/image-worker/`](apps/image-worker/README.md) | Cloudflare Workers | Build contact sheets and expose protected, read-only MCP inspection tools |
 
 ## Cloudflare services
 
@@ -116,11 +116,11 @@ Run each service in its own terminal:
 npm run dev --workspace admin-worker
 npm run dev --workspace ingest-worker
 npm run dev --workspace image-worker
-npm start --workspace collector
+npm start --workspace @sight-cache/collector
 ```
 
 Create a device in the Admin Worker, save the Collector Token when it is shown,
-then configure `collector/.env` from `collector/.env.example` with the Ingest
+then configure `apps/collector/.env` from `apps/collector/.env.example` with the Ingest
 URL, token, and RTSP URL. See each component guide for its detailed
 configuration and behavior.
 
@@ -145,7 +145,7 @@ npm run deploy --workspace image-worker
 
 ## Documentation
 
-- [Collector](collector/README.md)
-- [Admin Worker](admin-worker/README.md)
-- [Ingest Worker](ingest-worker/README.md)
-- [Image Worker and MCP](image-worker/README.md)
+- [Collector](apps/collector/README.md)
+- [Admin Worker](apps/admin-worker/README.md)
+- [Ingest Worker](apps/ingest-worker/README.md)
+- [Image Worker and MCP](apps/image-worker/README.md)

@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --persist-to ../.wrangler/state",
+    "dev": "wrangler dev --persist-to ../../.wrangler/state",
     "deploy": "wrangler deploy --minify",
-    "dev:migrate": "npx wrangler d1 migrations apply DB --local --persist-to ../.wrangler/state",
+    "dev:migrate": "npx wrangler d1 migrations apply DB --local --persist-to ../../.wrangler/state",
     "prod:migrate": "npx wrangler d1 migrations apply DB --remote",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "test": "node --experimental-strip-types --test test/device-status.test.mjs",
