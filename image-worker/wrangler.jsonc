@@ -15,7 +15,6 @@
   ],
   "images": {
     "binding": "IMAGES",
-    "remote": true,
   },
   "queues": {
     "consumers": [{
@@ -40,7 +39,6 @@
     {
       "binding": "BUCKET",
       "bucket_name": "sight-cache",
-      "remote": true
     }
   ],
   "observability": {

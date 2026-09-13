@@ -1,5 +1,6 @@
 {
   "name": "image-worker",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",

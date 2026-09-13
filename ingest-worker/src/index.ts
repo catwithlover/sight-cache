@@ -90,6 +90,18 @@ const validateIngestHeaders = validator('header', (headers, c) => {
     )
   }
 
+  if (capturedAt.getTime() > Date.now()) {
+    return c.json(
+      {
+        error: {
+          code: 'captured_at_future',
+          message: 'x-filename capture time must not be in the future.',
+        },
+      },
+      400,
+    )
+  }
+
   const contentType = headers['content-type']
     ?.split(';', 1)[0]
     .trim()
@@ -197,6 +209,7 @@ app.post(
     const dateTime = capturedAt.toISOString()
     const path = buildImagePath(accessDevice.id, capturedAt)
     const storedFrame = await c.env.BUCKET.put(path, body, {
+      onlyIf: { etagDoesNotMatch: '*' },
       httpMetadata: {
         contentType: 'image/jpeg',
         cacheControl: 'no-store',
@@ -205,6 +218,19 @@ app.post(
         capturedAt: dateTime,
       },
     })
+
+    if (!storedFrame) {
+      return c.json(
+        {
+          error: {
+            code: 'frame_already_exists',
+            message:
+              'A frame already exists for this device and capture time.',
+          },
+        },
+        409,
+      )
+    }
 
     c.executionCtx.waitUntil(
       updateDeviceLastFrameAt(

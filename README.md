@@ -5,7 +5,7 @@
   <p>English · <a href="README.zh-TW.md" lang="zh-Hant-TW">繁體中文</a></p>
 </div>
 
-**Sight Cache** — A serverless CCTV history pipeline built on Cloudflare to provide AI Agents with compact, inspectable visual memory via MCP.
+**Sight Cache** — A serverless camera history pipeline built on Cloudflare that gives AI agents a compact, inspectable visual memory through MCP.
 
 ## How it works
 
@@ -140,8 +140,8 @@ npm run deploy --workspace image-worker
 - Every identity admitted by the MCP Access policy can currently inspect every
   active device. Keep that policy restricted until per-device authorization is
   implemented.
-- Define an appropriate R2 lifecycle policy based on the sensitivity of the
-  images you store.
+- Before enabling image ingestion, consider configuring the shared R2 bucket
+  with a lifecycle rule that expires objects after 14 days.
 
 ## Documentation
 

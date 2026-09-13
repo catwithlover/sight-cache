@@ -112,7 +112,7 @@ test('Cloudflare Access protects MCP tool discovery and calls', async (t) => {
   const audience = 'test-access-application-aud'
   const device = {
     id: '01234567-89ab-4def-8123-456789abcdef',
-    name: 'Litter box',
+    name: 'Camera 1',
     last_frame_at: new Date().toISOString(),
   }
   const statement = {
@@ -285,8 +285,19 @@ test('Cloudflare Access protects MCP tool discovery and calls', async (t) => {
       'get_original_frame',
     ],
   )
+  const contactSheetTool = tools.result.tools.find(
+    (tool) => tool.name === 'get_contact_sheet',
+  )
+  assert.deepEqual(contactSheetTool.annotations, {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  })
   assert.equal(
-    tools.result.tools.every((tool) => tool.annotations.readOnlyHint === true),
+    tools.result.tools
+      .filter((tool) => tool.name !== 'get_contact_sheet')
+      .every((tool) => tool.annotations.readOnlyHint === true),
     true,
   )
 

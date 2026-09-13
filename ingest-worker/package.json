@@ -1,10 +1,12 @@
 {
   "name": "ingest-worker",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev --persist-to ../.wrangler/state",
     "deploy": "wrangler deploy --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "test": "wrangler deploy --dry-run --outdir .test-build && node --test test/ingest.test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

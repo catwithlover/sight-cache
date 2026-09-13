@@ -51,7 +51,7 @@ Authorization: Bearer scd_<token-id>.<secret>
 | `Authorization` | A valid collector bearer token |
 | `Content-Type` | `image/jpeg` |
 | `Content-Length` | A positive integer; the image must not exceed 10 MiB |
-| `X-Filename` | A capture timestamp in `YYYY-MM-DDTHH:mm:ss±HHMM.jpg` format |
+| `X-Filename` | A non-future capture timestamp in `YYYY-MM-DDTHH:mm:ss±HHMM.jpg` format |
 
 The request body must contain the JPEG bytes. For example:
 
@@ -73,6 +73,10 @@ A successful upload returns HTTP `200`:
   "message": "process successfully"
 }
 ```
+
+Frame keys are immutable. If the same device and capture timestamp already
+exist, the Worker returns HTTP `409` with error code `frame_already_exists` and
+leaves the existing R2 object unchanged.
 
 ## R2 object layout
 

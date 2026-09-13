@@ -90,6 +90,13 @@ const readOnlyAnnotations = {
   openWorldHint: false,
 } as const
 
+const materializingAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+} as const
+
 const toolError = (error: unknown) => {
   const code =
     error instanceof ImageAccessError ? error.code : 'image_access_failed'
@@ -121,7 +128,7 @@ export function createMcpServer(bindings: Bindings) {
     },
     {
       instructions:
-        'Use list_devices first. For an hourly review, inspect all six hourly sheets before deciding that no cat appeared. Use the two minute sheets to inspect suspicious minutes, list_frames to enumerate the exact nearby captures, then get_original_frame for selected evidence. A missing slot means missing camera data, not an empty litter box. Times are normalized to UTC.',
+        'Use list_devices first. For an hourly review, inspect all six hourly sheets before drawing conclusions about the scene. Use the two minute sheets to inspect suspicious minutes, list_frames to enumerate the exact nearby captures, then get_original_frame for selected evidence. A missing slot means missing camera data, not evidence that the scene was empty. Times are normalized to UTC.',
     },
   )
 
@@ -173,7 +180,7 @@ export function createMcpServer(bindings: Bindings) {
           .describe('One-based image group number'),
       }),
       outputSchema: contactSheetOutputSchema,
-      annotations: readOnlyAnnotations,
+      annotations: materializingAnnotations,
     },
     async ({ deviceId, unit, beginAt, sheetNumber }) => {
       try {

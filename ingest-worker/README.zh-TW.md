@@ -51,7 +51,7 @@ Authorization: Bearer scd_<token-id>.<secret>
 | `Authorization` | 有效的 Collector Bearer Token |
 | `Content-Type` | `image/jpeg` |
 | `Content-Length` | 正整數；影像大小不得超過 10 MiB |
-| `X-Filename` | `YYYY-MM-DDTHH:mm:ss±HHMM.jpg` 格式的拍攝時間 |
+| `X-Filename` | `YYYY-MM-DDTHH:mm:ss±HHMM.jpg` 格式且不得在未來的拍攝時間 |
 
 Request body 必須是 JPEG bytes。例如：
 
@@ -73,6 +73,9 @@ curl --fail-with-body http://localhost:8787/api/ingest \
   "message": "process successfully"
 }
 ```
+
+影格 key 不可變更。若相同設備與拍攝時間已存在，Worker 會回傳 HTTP `409` 與
+錯誤代碼 `frame_already_exists`，並保留既有 R2 物件不變。
 
 ## R2 物件結構
 

@@ -128,7 +128,7 @@ npm run deploy --workspace image-worker
 
 - Admin Worker 以及所有可連到 `/mcp` 的路由，都必須由對應的 Cloudflare Access 保護。
 - 目前 MCP Access policy 允許的每個身分都能檢視所有啟用中的設備。在完成個別設備授權前，請嚴格限制該 policy。
-- 請依儲存影像的敏感程度設定適當的 R2 lifecycle policy。
+- 啟用影像接收前，請考慮將共用 R2 bucket 的 lifecycle rule 設為物件於 14 天後過期。
 
 ## 文件
 
