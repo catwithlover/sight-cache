@@ -8,20 +8,30 @@
 
 **Sight Cache** — Visual memory infrastructure for AI agents, built on Cloudflare and MCP.
 
-## How it works
+## Architecture
 
-```text
-Administrator <--> Cloudflare Access <--> Admin Worker
-                                                +--> D1 devices + token hashes
-                                                `--> Collector Token (shown once)
+```mermaid
+flowchart TD
+    Camera[RTSP camera] --> Collector["Collector<br/>Node.js or Docker + FFmpeg"]
+    Collector -->|JPEG frames + Collector Token| Ingest[Ingest Worker]
 
-RTSP camera --> FFmpeg Collector --> Ingest Worker --> D1 activity
-                                                   `--> R2 original JPEGs
+    Ingest -->|Original JPEGs| R2[(Cloudflare R2)]
+    Ingest -->|Activity timestamps| D1[(Cloudflare D1)]
 
-MCP client <--> Access Managed OAuth <--> Image Worker
-                                          ^  |  |
-Hourly cron --> Queue ---------------------'  |  +--> Cloudflare Images
-R2 original JPEGs ----------------------------'  `--> R2 contact sheets + manifests
+    Cron[Hourly cron] --> Queue[Cloudflare Queue]
+    Queue -->|Contact-sheet jobs| Image[Image Worker]
+    D1 -->|Active devices| Image
+    R2 -->|Original JPEGs| Image
+    Image <--> |Resize and crop frames| Images[Cloudflare Images]
+    Image -->|Contact sheets + manifests| R2
+
+    Agent[AI agent / MCP client] <--> |MCP with Managed OAuth| Access[Cloudflare Access]
+    Access <--> Image
+
+    Administrator[Administrator] <--> AdminAccess[Cloudflare Access]
+    AdminAccess <--> Admin[Admin Worker]
+    Admin -->|Devices, token hashes, and activity| D1
+    Admin -.->|Collector Token shown once| Collector
 ```
 
 ## Components

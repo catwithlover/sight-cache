@@ -8,20 +8,30 @@
 
 **Sight Cache** — 為 AI Agent 打造的視覺記憶基礎設施，建構於 Cloudflare 與 MCP 之上。
 
-## 運作方式
+## 架構
 
-```text
-管理者 <--> Cloudflare Access <--> Admin Worker
-                                          +--> D1 設備與 Token 雜湊
-                                          `--> Collector Token（僅顯示一次）
+```mermaid
+flowchart TD
+    Camera[RTSP 監視器] --> Collector["Collector<br/>Node.js 或 Docker + FFmpeg"]
+    Collector -->|JPEG 畫面 + Collector Token| Ingest[Ingest Worker]
 
-RTSP 監視器 --> FFmpeg Collector --> Ingest Worker --> D1 活動時間
-                                                    `--> R2 原始 JPEG
+    Ingest -->|原始 JPEG| R2[(Cloudflare R2)]
+    Ingest -->|活動時間| D1[(Cloudflare D1)]
 
-MCP Client <--> Access Managed OAuth <--> Image Worker
-                                            ^  |  |
-每小時 cron --> Queue ----------------------'  |  +--> Cloudflare Images
-R2 原始 JPEG ----------------------------------'  `--> R2 縮圖總覽與索引檔
+    Cron[每小時 cron] --> Queue[Cloudflare Queue]
+    Queue -->|縮圖總覽工作| Image[Image Worker]
+    D1 -->|啟用中設備| Image
+    R2 -->|原始 JPEG| Image
+    Image <--> |縮放與裁切畫面| Images[Cloudflare Images]
+    Image -->|縮圖總覽與索引檔| R2
+
+    Agent[AI Agent / MCP Client] <--> |使用 Managed OAuth 的 MCP| Access[Cloudflare Access]
+    Access <--> Image
+
+    Administrator[管理者] <--> AdminAccess[Cloudflare Access]
+    AdminAccess <--> Admin[Admin Worker]
+    Admin -->|設備、Token 雜湊與活動資訊| D1
+    Admin -.->|僅顯示一次的 Collector Token| Collector
 ```
 
 ## 元件
