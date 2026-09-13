@@ -52,6 +52,7 @@ Authorization: Bearer scd_<token-id>.<secret>
 | `Content-Type` | `image/jpeg` |
 | `Content-Length` | A positive integer; the image must not exceed 10 MiB |
 | `X-Filename` | A capture timestamp in `YYYY-MM-DDTHH:mm:ss±HHMM.jpg` format; up to five minutes of future clock skew is accepted |
+| `X-Timezone` | Camera IANA time zone, such as `Asia/Taipei` |
 
 The request body must contain the JPEG bytes. For example:
 
@@ -62,6 +63,7 @@ curl --fail-with-body http://localhost:8787/api/ingest \
   --header "Content-Type: image/jpeg" \
   --header "Content-Length: $(wc -c < frame.jpg)" \
   --header "X-Filename: 2026-09-12T03:42:47+0800.jpg" \
+  --header "X-Timezone: Asia/Taipei" \
   --data-binary @frame.jpg
 ```
 
@@ -91,6 +93,9 @@ For example, `2026-09-12T03:42:47+0800.jpg` is stored as:
 ```text
 frames/550e8400-e29b-41d4-a716-446655440000/2026/09/11/19/42/20260911T194247Z.jpg
 ```
+
+R2 metadata stores UTC `capturedAt`, offset-aware `capturedAtLocal`, and the
+IANA `timezone`.
 
 ## Activity tracking
 

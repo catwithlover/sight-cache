@@ -31,7 +31,12 @@ export type Bindings = Omit<
   LOCAL_MCP_BYPASS?: string
   LOCAL_MCP_EMAIL?: string
   MCP_ALLOWED_ORIGIN_HOSTNAMES?: string
+  MCP_ENABLE_FRAME_DOWNLOAD_URLS?: string
   MCP_MAX_LOOKBACK_DAYS?: string
+  R2_ACCESS_KEY_ID?: string
+  R2_ACCOUNT_ID?: string
+  R2_BUCKET_NAME?: string
+  R2_SECRET_ACCESS_KEY?: string
 }
 
 const TILE_WIDTH = 640
@@ -55,8 +60,10 @@ const contactSheetSlotSchema = z.strictObject({
   targetAt: z.iso.datetime(),
   slotEndAt: z.iso.datetime(),
   capturedAt: z.iso.datetime().nullable(),
+  capturedAtLocal: z.iso.datetime({ offset: true }).nullable(),
   deltaMs: z.number().nonnegative().nullable(),
   status: z.enum(['captured', 'missing']),
+  timezone: z.string().min(1).max(64).nullable(),
 })
 
 const contactSheetSchema = z.strictObject({
@@ -305,8 +312,12 @@ const renderContactSheet = async (
         targetAt: sample.targetAt,
         slotEndAt: sample.slotEndAt,
         capturedAt: hasFrame ? sample.frame?.capturedAt ?? null : null,
+        capturedAtLocal: hasFrame
+          ? sample.frame?.capturedAtLocal ?? null
+          : null,
         deltaMs: hasFrame ? sample.deltaMs : null,
         status: hasFrame ? ('captured' as const) : ('missing' as const),
+        timezone: hasFrame ? sample.frame?.timezone ?? null : null,
       }
     }),
   }

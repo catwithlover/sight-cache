@@ -4,7 +4,7 @@ import { bodyLimit } from 'hono/body-limit'
 import { validator } from 'hono/validator'
 import {
   authenticateDeviceToken,
-  updateDeviceLastFrameAt,
+  updateDeviceFrameState,
   type AuthenticatedDevice,
 } from '@sight-cache/db/ingest'
 import { HomePage } from './home-page'
@@ -21,6 +21,8 @@ type AppEnv = {
 
 const imageFilenamePattern =
   /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d):([0-5]\d)([+-])(\d{2})(\d{2})\.jpg$/u
+const timezonePattern =
+  /^(?:UTC|[A-Za-z][A-Za-z0-9._+-]*(?:\/[A-Za-z0-9._+-]+)+)$/u
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
 const MAX_CAPTURE_CLOCK_SKEW_MS = 5 * 60 * 1000
 
@@ -51,6 +53,47 @@ const parseImageFilename = (filename: string) => {
   )
 
   return Number.isNaN(capturedAt.getTime()) ? null : capturedAt
+}
+
+const normalizeTimezone = (value: string) => {
+  if (value.length > 64 || !timezonePattern.test(value)) return null
+
+  try {
+    return new Intl.DateTimeFormat('en', { timeZone: value }).resolvedOptions()
+      .timeZone
+  } catch {
+    return null
+  }
+}
+
+const formatCapturedAtLocal = (capturedAt: Date, timezone: string) => {
+  const parts = new Intl.DateTimeFormat('en-CA-u-ca-iso8601-nu-latn', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+    timeZoneName: 'longOffset',
+  }).formatToParts(capturedAt)
+  const values = Object.fromEntries(
+    parts
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value]),
+  )
+  const zoneName = values.timeZoneName
+  const offset =
+    zoneName === 'GMT' || zoneName === 'UTC'
+      ? '+00:00'
+      : zoneName?.replace(/^GMT/u, '')
+
+  if (!offset || !/^[+-]\d{2}:\d{2}$/u.test(offset)) {
+    throw new Error(`Could not resolve the UTC offset for ${timezone}`)
+  }
+
+  return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}:${values.second}${offset}`
 }
 
 const buildImagePath = (deviceId: string, capturedAt: Date) => {
@@ -104,6 +147,33 @@ const validateIngestHeaders = validator('header', (headers, c) => {
     )
   }
 
+  const timezoneHeader = headers['x-timezone']?.trim()
+  if (!timezoneHeader) {
+    return c.json(
+      {
+        error: {
+          code: 'timezone_required',
+          message: 'X-Timezone is required.',
+        },
+      },
+      400,
+    )
+  }
+
+  const timezone = normalizeTimezone(timezoneHeader)
+  if (!timezone) {
+    return c.json(
+      {
+        error: {
+          code: 'timezone_invalid',
+          message:
+            'X-Timezone must be an IANA time zone, such as Asia/Taipei.',
+        },
+      },
+      400,
+    )
+  }
+
   const contentType = headers['content-type']
     ?.split(';', 1)[0]
     .trim()
@@ -151,7 +221,7 @@ const validateIngestHeaders = validator('header', (headers, c) => {
     )
   }
 
-  return { capturedAt, contentLength }
+  return { capturedAt, contentLength, timezone }
 })
 
 const limitImageBody = bodyLimit({
@@ -193,7 +263,7 @@ app.post(
   limitImageBody,
   async (c) => {
     const accessDevice = c.get('accessDevice')
-    const { capturedAt } = c.req.valid('header')
+    const { capturedAt, timezone } = c.req.valid('header')
     const body = c.req.raw.body
 
     if (!body) {
@@ -218,6 +288,8 @@ app.post(
       },
       customMetadata: {
         capturedAt: dateTime,
+        capturedAtLocal: formatCapturedAtLocal(capturedAt, timezone),
+        timezone,
       },
     })
 
@@ -235,12 +307,13 @@ app.post(
     }
 
     c.executionCtx.waitUntil(
-      updateDeviceLastFrameAt(
+      updateDeviceFrameState(
         c.env.DB,
         accessDevice,
         storedFrame.uploaded,
+        timezone,
       ).catch((error) => {
-        console.error('Failed to update device last_frame_at', error)
+        console.error('Failed to update device frame state', error)
       }),
     )
 

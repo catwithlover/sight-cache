@@ -52,6 +52,7 @@ Authorization: Bearer scd_<token-id>.<secret>
 | `Content-Type` | `image/jpeg` |
 | `Content-Length` | 正整數；影像大小不得超過 10 MiB |
 | `X-Filename` | `YYYY-MM-DDTHH:mm:ss±HHMM.jpg` 格式的拍攝時間；允許最多五分鐘的未來時鐘偏差 |
+| `X-Timezone` | 攝影機的 IANA 時區，例如 `Asia/Taipei` |
 
 Request body 必須是 JPEG bytes。例如：
 
@@ -62,6 +63,7 @@ curl --fail-with-body http://localhost:8787/api/ingest \
   --header "Content-Type: image/jpeg" \
   --header "Content-Length: $(wc -c < frame.jpg)" \
   --header "X-Filename: 2026-09-12T03:42:47+0800.jpg" \
+  --header "X-Timezone: Asia/Taipei" \
   --data-binary @frame.jpg
 ```
 
@@ -90,6 +92,9 @@ frames/{deviceId}/{YYYY}/{MM}/{DD}/{HH}/{mm}/{UTC_TIMESTAMP}.jpg
 ```text
 frames/550e8400-e29b-41d4-a716-446655440000/2026/09/11/19/42/20260911T194247Z.jpg
 ```
+
+R2 metadata 會保存 UTC `capturedAt`、含 offset 的 `capturedAtLocal` 與 IANA
+`timezone`。
 
 ## 活動時間追蹤
 

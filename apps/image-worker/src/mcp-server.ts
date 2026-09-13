@@ -4,11 +4,13 @@ import { contactSheetLayouts } from './contact-sheet-layout'
 import { type Bindings } from './contact-sheets'
 import {
   arrayBufferToBase64,
+  createOriginalFrameDownloads,
   getContactSheetImage,
   getOriginalFrameImage,
   ImageAccessError,
   listActiveDevices,
   listFrameMetadata,
+  MAX_FRAME_DOWNLOADS_PER_REQUEST,
 } from './image-access'
 
 const deviceIdSchema = z.uuid().describe('Active camera device ID')
@@ -16,11 +18,21 @@ const timestampSchema = z
   .iso
   .datetime({ offset: true })
   .describe('ISO 8601 timestamp with a timezone offset')
+const localTimestampSchema = z
+  .iso
+  .datetime({ offset: true })
+  .describe('Device-local capture time with its UTC offset')
+const timezoneSchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .describe('IANA time zone reported by the Collector')
 
 const deviceSchema = z.strictObject({
   id: z.uuid(),
   name: z.string(),
   lastUploadAt: z.iso.datetime().nullable(),
+  timezone: timezoneSchema.nullable(),
 })
 
 const contactSheetSlotSchema = z.strictObject({
@@ -30,8 +42,10 @@ const contactSheetSlotSchema = z.strictObject({
   targetAt: z.iso.datetime(),
   slotEndAt: z.iso.datetime(),
   capturedAt: z.iso.datetime().nullable(),
+  capturedAtLocal: localTimestampSchema.nullable(),
   deltaMs: z.number().nonnegative().nullable(),
   status: z.enum(['captured', 'missing']),
+  timezone: timezoneSchema.nullable(),
 })
 
 const contactSheetOutputSchema = z.strictObject({
@@ -60,9 +74,50 @@ const originalFrameOutputSchema = z.strictObject({
   deviceId: z.uuid(),
   deviceName: z.string(),
   capturedAt: z.iso.datetime(),
+  capturedAtLocal: localTimestampSchema,
   byteSize: z.number().int().positive(),
   mimeType: z.literal('image/jpeg'),
   original: z.literal(true),
+  timezone: timezoneSchema,
+})
+
+const availableFrameDownloadSchema = z.strictObject({
+  capturedAt: z.iso.datetime(),
+  capturedAtLocal: localTimestampSchema,
+  timezone: timezoneSchema,
+  byteSize: z.number().int().positive(),
+  mimeType: z.literal('image/jpeg'),
+  original: z.literal(true),
+  status: z.literal('available'),
+  downloadUrl: z.url(),
+})
+
+const unavailableFrameDownloadSchema = z.strictObject({
+  capturedAt: z.iso.datetime(),
+  status: z.literal('unavailable'),
+  error: z.strictObject({
+    code: z.enum([
+      'frame_not_found',
+      'frame_invalid',
+      'frame_access_failed',
+    ]),
+    message: z.string(),
+  }),
+})
+
+const frameDownloadsOutputSchema = z.strictObject({
+  deviceId: z.uuid(),
+  deviceName: z.string(),
+  expiresAt: z.iso.datetime(),
+  requestedCount: z.number().int().positive(),
+  availableCount: z.number().int().nonnegative(),
+  unavailableCount: z.number().int().nonnegative(),
+  frames: z.array(
+    z.discriminatedUnion('status', [
+      availableFrameDownloadSchema,
+      unavailableFrameDownloadSchema,
+    ]),
+  ),
 })
 
 const frameListOutputSchema = z.strictObject({
@@ -77,8 +132,10 @@ const frameListOutputSchema = z.strictObject({
   frames: z.array(
     z.strictObject({
       capturedAt: z.iso.datetime(),
+      capturedAtLocal: localTimestampSchema,
       byteSize: z.number().int().positive(),
       offsetMs: z.number().int().nonnegative(),
+      timezone: timezoneSchema,
     }),
   ),
 })
@@ -121,6 +178,8 @@ const toolError = (error: unknown) => {
 }
 
 export function createMcpServer(bindings: Bindings) {
+  const frameDownloadUrlsEnabled =
+    bindings.MCP_ENABLE_FRAME_DOWNLOAD_URLS === 'true'
   const server = new McpServer(
     {
       name: 'sight-cache',
@@ -128,7 +187,11 @@ export function createMcpServer(bindings: Bindings) {
     },
     {
       instructions:
-        'Use list_devices first. For an hourly review, inspect all six hourly sheets before drawing conclusions about the scene. Use the two minute sheets to inspect suspicious minutes, list_frames to enumerate the exact nearby captures, then get_original_frame for selected evidence. A missing slot means missing camera data, not evidence that the scene was empty. Times are normalized to UTC.',
+        'Use list_devices first. For an hourly review, inspect all six hourly sheets before drawing conclusions about the scene. Use the two minute sheets to inspect suspicious minutes, list_frames to enumerate the exact nearby captures, then get_original_frame for selected evidence.' +
+        (frameDownloadUrlsEnabled
+          ? ' When an execution environment needs several originals, create_original_frame_downloads returns temporary HTTPS GET URLs without embedding image data.'
+          : '') +
+        ' A missing slot means missing camera data, not evidence that the scene was empty. capturedAt is normalized to UTC; capturedAtLocal includes the device UTC offset and timezone identifies its IANA time zone.',
     },
   )
 
@@ -137,7 +200,7 @@ export function createMcpServer(bindings: Bindings) {
     {
       title: 'List camera devices',
       description:
-        'List active camera devices. Call this first and use lastUploadAt to distinguish a quiet scene from an offline or stale camera.',
+        'List active camera devices, latest upload times, and reported IANA time zones.',
       inputSchema: z.strictObject({}),
       outputSchema: z.strictObject({ devices: z.array(deviceSchema) }),
       annotations: readOnlyAnnotations,
@@ -165,7 +228,7 @@ export function createMcpServer(bindings: Bindings) {
     {
       title: 'Get a camera contact sheet',
       description:
-        'Return one JPEG group and exact slot timestamps for a completed camera window. An hour has six chronological sheets with ten one-minute samples each. A minute has two chronological sheets with six five-second samples each and is generated on demand. Call every sheetNumber in the window; image order is left-to-right, top-to-bottom. Use capturedAt from a slot to request its untouched original frame.',
+        'Return one JPEG group and exact UTC/device-local slot timestamps for a completed camera window. Call every sheetNumber in the window; image order is left-to-right, top-to-bottom. Use capturedAt from a slot to request its untouched original frame.',
       inputSchema: z.strictObject({
         deviceId: deviceIdSchema,
         unit: z.enum(['minute', 'hour']),
@@ -246,7 +309,7 @@ export function createMcpServer(bindings: Bindings) {
     {
       title: 'List camera frames in a time range',
       description:
-        'List exact frame timestamps in a bounded suspicious interval without downloading images. Use this after contact-sheet triage to find neighboring captures, then call get_original_frame only for selected capturedAt values. The range is inclusive of beginAt, exclusive of endAt, and may span at most five minutes. If truncated is true, continue with nextBeginAt and the same endAt.',
+        'List exact UTC and device-local frame timestamps without downloading images. The range is inclusive of beginAt, exclusive of endAt, and may span at most five minutes. If truncated is true, continue with nextBeginAt and the same endAt.',
       inputSchema: z.strictObject({
         deviceId: deviceIdSchema,
         beginAt: timestampSchema.describe('Inclusive start of the frame range'),
@@ -300,7 +363,7 @@ export function createMcpServer(bindings: Bindings) {
     {
       title: 'Get an original camera frame',
       description:
-        'Return the complete JPEG bytes uploaded by the camera without resizing, cropping, or recompression. Use an exact whole-second capturedAt value returned by get_contact_sheet or list_frames, and request only a small number of evidence frames after contact-sheet triage.',
+        'Return the untouched JPEG with its UTC and device-local capture metadata. Use an exact whole-second capturedAt value returned by get_contact_sheet or list_frames.',
       inputSchema: z.strictObject({
         deviceId: deviceIdSchema,
         capturedAt: timestampSchema.describe(
@@ -321,9 +384,11 @@ export function createMcpServer(bindings: Bindings) {
           deviceId: result.device.id,
           deviceName: result.device.name,
           capturedAt: result.capturedAt,
+          capturedAtLocal: result.capturedAtLocal,
           byteSize: result.size,
           mimeType: 'image/jpeg' as const,
           original: true as const,
+          timezone: result.timezone,
         }
 
         return {
@@ -342,6 +407,56 @@ export function createMcpServer(bindings: Bindings) {
       }
     },
   )
+
+  if (frameDownloadUrlsEnabled) {
+    server.registerTool(
+      'create_original_frame_downloads',
+      {
+        title: 'Create original frame downloads',
+        description:
+          'Return a JSON manifest of temporary HTTPS GET URLs for several original JPEG frames. No image data is embedded. URLs expire after 30 minutes and should not be logged or shared.',
+        inputSchema: z.strictObject({
+          deviceId: deviceIdSchema,
+          capturedAts: z
+            .array(timestampSchema)
+            .min(1)
+            .max(MAX_FRAME_DOWNLOADS_PER_REQUEST)
+            .describe(
+              `Distinct exact whole-second capturedAt values; at most ${MAX_FRAME_DOWNLOADS_PER_REQUEST}`,
+            ),
+        }),
+        outputSchema: frameDownloadsOutputSchema,
+        annotations: readOnlyAnnotations,
+      },
+      async ({ deviceId, capturedAts }) => {
+        try {
+          const result = await createOriginalFrameDownloads(
+            bindings,
+            deviceId.toLowerCase(),
+            capturedAts,
+          )
+          const structuredContent = {
+            deviceId: result.device.id,
+            deviceName: result.device.name,
+            expiresAt: result.expiresAt,
+            requestedCount: result.requestedCount,
+            availableCount: result.availableCount,
+            unavailableCount: result.unavailableCount,
+            frames: result.frames,
+          }
+
+          return {
+            content: [
+              { type: 'text', text: JSON.stringify(structuredContent) },
+            ],
+            structuredContent,
+          }
+        } catch (error) {
+          return toolError(error)
+        }
+      },
+    )
+  }
 
   return server
 }

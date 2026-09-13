@@ -2,12 +2,14 @@ export type ActiveDevice = {
   id: string
   name: string
   lastFrameAt: string | null
+  timezone: string | null
 }
 
 type DeviceRow = {
   id: string
   name: string
   last_frame_at: string | null
+  timezone: string | null
 }
 
 type DeviceIdRow = {
@@ -18,12 +20,13 @@ const toDevice = (row: DeviceRow): ActiveDevice => ({
   id: row.id,
   name: row.name,
   lastFrameAt: row.last_frame_at,
+  timezone: row.timezone,
 })
 
 export const listActiveDevices = async (db: D1Database) => {
   const result = await db
     .prepare(
-      `SELECT id, name, last_frame_at
+      `SELECT id, name, last_frame_at, timezone
        FROM devices
        WHERE disabled_at IS NULL
        ORDER BY lower(name), created_at DESC`,
@@ -39,7 +42,7 @@ export const getActiveDevice = async (
 ) => {
   const row = await db
     .prepare(
-      `SELECT id, name, last_frame_at
+      `SELECT id, name, last_frame_at, timezone
        FROM devices
        WHERE id = ?1
          AND disabled_at IS NULL`,

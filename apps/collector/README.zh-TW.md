@@ -49,6 +49,7 @@ RTSP 攝影機
 | `API_ENDPOINT` | 以 `/api/ingest` 結尾的完整 Ingest Worker endpoint |
 | `BEARER_TOKEN` | Admin Worker 回傳的完整 Collector Token |
 | `TAPO_URL` | 包含攝影機憑證與位址的 RTSP 串流 URL |
+| `TIMEZONE` | 攝影機的 IANA 時區，例如 `Asia/Taipei` |
 | `CAPTURE_INTERVAL_SECONDS` | 選填的正數擷取間隔，單位為秒；預設為 `5` |
 
 ## 執行
@@ -81,9 +82,8 @@ docker compose --env-file compose.env up --build --detach
 YYYY-MM-DDTHH:mm:ss±HHMM.jpg
 ```
 
-Collector 會將時間戳記檔名放入 `X-Filename`、將完整 Collector Token 作為
-Bearer Token，並以 request body 傳送 JPEG bytes。上傳會循序處理，避免緩慢
-的 request 形成平行上傳突發流量。
+Collector 會以 `X-Filename` 傳送檔名、以 `X-Timezone` 傳送 IANA 時區，並搭配
+Bearer Token 上傳 JPEG bytes。上傳會循序處理。
 
 ## 安全性
 

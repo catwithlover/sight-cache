@@ -4,7 +4,13 @@ CREATE TABLE devices (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   disabled_at TEXT,
-  last_frame_at TEXT
+  last_frame_at TEXT,
+  timezone TEXT CHECK (
+    timezone IS NULL OR (
+      timezone = trim(timezone)
+      AND length(timezone) BETWEEN 1 AND 64
+    )
+  )
 );
 
 CREATE TABLE device_tokens (

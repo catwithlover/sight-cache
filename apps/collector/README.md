@@ -51,6 +51,7 @@ Before configuring `TAPO_URL`, follow the official
 | `API_ENDPOINT` | Complete Ingest Worker endpoint ending in `/api/ingest` |
 | `BEARER_TOKEN` | Complete Collector Token returned by the Admin Worker |
 | `TAPO_URL` | RTSP stream URL, including the camera credentials and address |
+| `TIMEZONE` | Camera IANA time zone, such as `Asia/Taipei` |
 | `CAPTURE_INTERVAL_SECONDS` | Optional positive capture interval in seconds; defaults to `5` |
 
 ## Run
@@ -87,10 +88,9 @@ Frames are written beneath `frames/` with the host's local time and UTC offset:
 YYYY-MM-DDTHH:mm:ss±HHMM.jpg
 ```
 
-The Collector sends the timestamped filename in `X-Filename`, the complete
-Collector Token as a bearer token, and the JPEG bytes as the request body.
-Uploads are processed sequentially so a slow request does not create parallel
-upload bursts.
+The Collector sends the filename in `X-Filename`, the IANA time zone in
+`X-Timezone`, and the JPEG bytes with bearer authentication. Uploads are
+processed sequentially.
 
 ## Security
 

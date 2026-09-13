@@ -9,7 +9,7 @@ import {
 } from '../src/admin.ts'
 import {
   authenticateDeviceToken,
-  updateDeviceLastFrameAt,
+  updateDeviceFrameState,
 } from '../src/ingest.ts'
 import {
   activeDeviceExists,
@@ -65,6 +65,7 @@ const activeDeviceRow = {
   updated_at: '2026-09-13T10:30:00.000Z',
   disabled_at: null,
   last_frame_at: '2026-09-13T10:29:00.000Z',
+  timezone: 'Asia/Taipei',
   token_id: 'token-id',
   token_hint: 'scd_token...hint',
   token_created_at: '2026-09-13T10:00:00.000Z',
@@ -82,6 +83,7 @@ test('maps admin devices and selects only the current token', async () => {
       updatedAt: activeDeviceRow.updated_at,
       disabledAt: null,
       lastFrameAt: activeDeviceRow.last_frame_at,
+      timezone: activeDeviceRow.timezone,
       token: {
         id: activeDeviceRow.token_id,
         hint: activeDeviceRow.token_hint,
@@ -165,6 +167,7 @@ test('authenticates only an enabled device with an active token', async () => {
         id: activeDeviceRow.id,
         name: activeDeviceRow.name,
         last_frame_at: activeDeviceRow.last_frame_at,
+        timezone: activeDeviceRow.timezone,
         token_id: activeDeviceRow.token_id,
         token_last_used_at: new Date().toISOString(),
       },
@@ -175,6 +178,7 @@ test('authenticates only an enabled device with an active token', async () => {
     id: activeDeviceRow.id,
     name: activeDeviceRow.name,
     lastFrameAt: activeDeviceRow.last_frame_at,
+    timezone: activeDeviceRow.timezone,
   })
   assert.match(calls[0].sql, /t\.revoked_at IS NULL/u)
   assert.match(calls[0].sql, /d\.disabled_at IS NULL/u)
@@ -193,6 +197,7 @@ test('touches stale token activity with a conditional update', async () => {
         id: activeDeviceRow.id,
         name: activeDeviceRow.name,
         last_frame_at: null,
+        timezone: null,
         token_id: activeDeviceRow.token_id,
         token_last_used_at: null,
       },
@@ -217,24 +222,54 @@ test('throttles device frame activity and protects the write with a cutoff', asy
     id: activeDeviceRow.id,
     name: activeDeviceRow.name,
     lastFrameAt: '2026-09-13T12:00:01.000Z',
+    timezone: activeDeviceRow.timezone,
   }
   const skipped = createDatabase()
 
-  await updateDeviceLastFrameAt(skipped.db, recent, storedAt)
+  await updateDeviceFrameState(
+    skipped.db,
+    recent,
+    storedAt,
+    activeDeviceRow.timezone,
+  )
   assert.equal(skipped.calls.length, 0)
 
   const boundary = createDatabase()
-  await updateDeviceLastFrameAt(
+  await updateDeviceFrameState(
     boundary.db,
     { ...recent, lastFrameAt: '2026-09-13T12:00:00.000Z' },
     storedAt,
+    activeDeviceRow.timezone,
   )
   assert.match(boundary.calls[0].sql, /disabled_at IS NULL/u)
+  assert.match(boundary.calls[0].sql, /timezone = \?4/u)
   assert.deepEqual(boundary.calls[0].binds, [
     '2026-09-13T12:00:05.000Z',
     activeDeviceRow.id,
     '2026-09-13T12:00:00.000Z',
+    activeDeviceRow.timezone,
   ])
+})
+
+test('records a changed device timezone even when frame activity is recent', async () => {
+  const { db, calls } = createDatabase()
+  const storedAt = new Date('2026-09-13T12:00:05.000Z')
+
+  await updateDeviceFrameState(
+    db,
+    {
+      id: activeDeviceRow.id,
+      name: activeDeviceRow.name,
+      lastFrameAt: '2026-09-13T12:00:04.000Z',
+      timezone: 'UTC',
+    },
+    storedAt,
+    activeDeviceRow.timezone,
+  )
+
+  assert.equal(calls.length, 1)
+  assert.match(calls[0].sql, /OR timezone IS NOT \?4/u)
+  assert.equal(calls[0].binds[3], activeDeviceRow.timezone)
 })
 
 test('maps active device reads while preserving their projections', async () => {
@@ -242,6 +277,7 @@ test('maps active device reads while preserving their projections', async () => 
     id: activeDeviceRow.id,
     name: activeDeviceRow.name,
     last_frame_at: activeDeviceRow.last_frame_at,
+    timezone: activeDeviceRow.timezone,
   }
   const listed = createDatabase({ allResults: [[row]] })
   const found = createDatabase({ firstResults: [row] })
@@ -251,12 +287,14 @@ test('maps active device reads while preserving their projections', async () => 
       id: row.id,
       name: row.name,
       lastFrameAt: row.last_frame_at,
+      timezone: row.timezone,
     },
   ])
   assert.deepEqual(await getActiveDevice(found.db, row.id), {
     id: row.id,
     name: row.name,
     lastFrameAt: row.last_frame_at,
+    timezone: row.timezone,
   })
   assert.match(listed.calls[0].sql, /ORDER BY lower\(name\), created_at DESC/u)
   assert.deepEqual(found.calls[0].binds, [row.id])

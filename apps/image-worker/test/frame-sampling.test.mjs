@@ -6,9 +6,16 @@ import {
   isAlignedSamplingBeginAt,
   listFrames,
   listFramesInRange,
+  parseFrameMetadata,
   sampleFrames,
   samplingLayouts,
 } from '../src/frame-sampling.ts'
+
+const frameMetadata = (capturedAt, timezone = 'UTC') => ({
+  capturedAt,
+  capturedAtLocal: capturedAt.replace('.000Z', '+00:00'),
+  timezone,
+})
 
 test('contact sheets use six hourly groups and two minute groups', () => {
   assert.deepEqual(contactSheetLayouts.hour, {
@@ -44,8 +51,10 @@ test('sampling preserves chronological row-major slots and missing frames', () =
     return {
       key: `frame-${seconds}`,
       capturedAt: capturedAt.toISOString(),
+      capturedAtLocal: capturedAt.toISOString().replace('.000Z', '+00:00'),
       capturedAtMs: capturedAt.getTime(),
       size: 1_024,
+      timezone: 'UTC',
     }
   })
   const samples = sampleFrames(frames, {
@@ -123,7 +132,7 @@ test('range listing reads only minute prefixes and filters both boundaries', asy
   ].map(([capturedAt, size]) => ({
     key: `frames/device/${capturedAt}`,
     size,
-    customMetadata: { capturedAt },
+    customMetadata: frameMetadata(capturedAt),
   }))
   const bucket = {
     async list({ prefix }) {
@@ -169,7 +178,7 @@ test('frame listing follows R2 cursors and sorts capture metadata', async () => 
               key: 'second.jpg',
               size: 200,
               customMetadata: {
-                capturedAt: '2026-09-13T01:02:10.000Z',
+                ...frameMetadata('2026-09-13T01:02:10.000Z'),
               },
             },
           ],
@@ -184,7 +193,7 @@ test('frame listing follows R2 cursors and sorts capture metadata', async () => 
             key: 'first.jpg',
             size: 100,
             customMetadata: {
-              capturedAt: '2026-09-13T01:02:05.000Z',
+              ...frameMetadata('2026-09-13T01:02:05.000Z'),
             },
           },
         ],
@@ -198,5 +207,39 @@ test('frame listing follows R2 cursors and sorts capture metadata', async () => 
   assert.deepEqual(
     frames.map(({ key }) => key),
     ['first.jpg', 'second.jpg'],
+  )
+})
+
+test('parses matching UTC and device-local frame metadata', () => {
+  assert.deepEqual(
+    parseFrameMetadata({
+      capturedAt: '2026-09-12T19:21:48.000Z',
+      capturedAtLocal: '2026-09-13T03:21:48+08:00',
+      timezone: 'Asia/Taipei',
+    }),
+    {
+      capturedAt: '2026-09-12T19:21:48.000Z',
+      capturedAtLocal: '2026-09-13T03:21:48+08:00',
+      capturedAtMs: Date.parse('2026-09-12T19:21:48.000Z'),
+      timezone: 'Asia/Taipei',
+    },
+  )
+
+  assert.equal(
+    parseFrameMetadata({
+      capturedAt: '2026-09-12T19:21:48.000Z',
+      capturedAtLocal: '2026-09-13T04:21:48+08:00',
+      timezone: 'Asia/Taipei',
+    }),
+    null,
+  )
+
+  assert.equal(
+    parseFrameMetadata({
+      capturedAt: '2026-09-12T19:21:48.000Z',
+      capturedAtLocal: '2026-09-13T02:21:48+07:00',
+      timezone: 'Asia/Taipei',
+    }),
+    null,
   )
 })

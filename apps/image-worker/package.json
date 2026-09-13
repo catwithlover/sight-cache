@@ -12,10 +12,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@sight-cache/worker-home-page": "*",
-    "@sight-cache/db": "*",
     "@modelcontextprotocol/server": "2.0.0",
+    "@sight-cache/db": "*",
+    "@sight-cache/worker-home-page": "*",
     "agents": "^0.23.0",
+    "aws4fetch": "^1.0.20",
     "hono": "^4.13.7",
     "jose": "^6.2.12",
     "typescript": "^7.0.2",

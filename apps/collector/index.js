@@ -7,6 +7,7 @@ const spoolDir = "./frames";
 const captureIntervalSeconds = Number(
   process.env.CAPTURE_INTERVAL_SECONDS ?? 5,
 );
+const timezone = process.env.TIMEZONE?.trim();
 const streamStallTimeoutMs = Math.max(
   30_000,
   captureIntervalSeconds * 3 * 1000,
@@ -15,6 +16,22 @@ const restartDelayMs = 5000;
 
 if (!Number.isFinite(captureIntervalSeconds) || captureIntervalSeconds <= 0) {
   throw new Error("CAPTURE_INTERVAL_SECONDS must be a positive number");
+}
+
+if (
+  !timezone ||
+  timezone.length > 64 ||
+  !/^(?:UTC|[A-Za-z][A-Za-z0-9._+-]*(?:\/[A-Za-z0-9._+-]+)+)$/.test(
+    timezone,
+  )
+) {
+  throw new Error("TIMEZONE must be an IANA time zone, such as Asia/Taipei");
+}
+
+try {
+  new Intl.DateTimeFormat("en", { timeZone: timezone }).format();
+} catch {
+  throw new Error("TIMEZONE must be an IANA time zone, such as Asia/Taipei");
 }
 
 let shuttingDown = false;
@@ -37,6 +54,7 @@ const uploadFrame = async (filePath, filename) => {
       "Content-Type": "image/jpeg",
       "Content-Length": String(binaryData.length),
       "X-Filename": filename,
+      "X-Timezone": timezone,
     },
     body: binaryData,
     signal: AbortSignal.timeout(30_000),

@@ -4,12 +4,14 @@ export type AuthenticatedDevice = {
   id: string
   name: string
   lastFrameAt: string | null
+  timezone: string | null
 }
 
 type DeviceTokenRow = {
   id: string
   name: string
   last_frame_at: string | null
+  timezone: string | null
   token_id: string
   token_last_used_at: string | null
 }
@@ -28,6 +30,7 @@ export const authenticateDeviceToken = async (
          d.id,
          d.name,
          d.last_frame_at,
+         d.timezone,
          t.id AS token_id,
          t.last_used_at AS token_last_used_at
        FROM device_tokens AS t
@@ -71,13 +74,15 @@ export const authenticateDeviceToken = async (
     id: row.id,
     name: row.name,
     lastFrameAt: row.last_frame_at,
+    timezone: row.timezone,
   }
 }
 
-export const updateDeviceLastFrameAt = async (
+export const updateDeviceFrameState = async (
   db: D1Database,
   device: AuthenticatedDevice,
   storedAt: Date,
+  timezone: string,
 ) => {
   const storedAtTime = storedAt.getTime()
   const previousLastFrameAt = device.lastFrameAt
@@ -86,7 +91,8 @@ export const updateDeviceLastFrameAt = async (
 
   if (
     Number.isFinite(previousLastFrameAt) &&
-    storedAtTime - previousLastFrameAt < LAST_FRAME_UPDATE_INTERVAL_MS
+    storedAtTime - previousLastFrameAt < LAST_FRAME_UPDATE_INTERVAL_MS &&
+    device.timezone === timezone
   ) {
     return
   }
@@ -98,11 +104,20 @@ export const updateDeviceLastFrameAt = async (
   await db
     .prepare(
       `UPDATE devices
-       SET last_frame_at = ?1
+       SET
+         last_frame_at = CASE
+           WHEN last_frame_at IS NULL OR last_frame_at <= ?3 THEN ?1
+           ELSE last_frame_at
+         END,
+         timezone = ?4
        WHERE id = ?2
          AND disabled_at IS NULL
-         AND (last_frame_at IS NULL OR last_frame_at <= ?3)`,
+         AND (
+           last_frame_at IS NULL
+           OR last_frame_at <= ?3
+           OR timezone IS NOT ?4
+         )`,
     )
-    .bind(storedAt.toISOString(), device.id, cutoff)
+    .bind(storedAt.toISOString(), device.id, cutoff, timezone)
     .run()
 }

@@ -10,17 +10,22 @@ const filenameAt = (offsetMs) =>
     .toISOString()
     .replace('.000Z', '+0000.jpg')
 
-const ingestRequest = (filename) =>
-  new Request('http://localhost/api/ingest', {
+const ingestRequest = (filename, timezone = 'Asia/Taipei') => {
+  const headers = {
+    Authorization: 'Bearer test-collector-token',
+    'Content-Length': String(imageBytes.byteLength),
+    'Content-Type': 'image/jpeg',
+    'X-Filename': filename,
+  }
+
+  if (timezone !== null) headers['X-Timezone'] = timezone
+
+  return new Request('http://localhost/api/ingest', {
     method: 'POST',
-    headers: {
-      Authorization: 'Bearer test-collector-token',
-      'Content-Length': String(imageBytes.byteLength),
-      'Content-Type': 'image/jpeg',
-      'X-Filename': filename,
-    },
+    headers,
     body: imageBytes,
   })
+}
 
 const createEnvironment = (putResult) => {
   const putCalls = []
@@ -43,6 +48,7 @@ const createEnvironment = (putResult) => {
               id: deviceId,
               name: 'Camera 1',
               last_frame_at: null,
+              timezone: null,
               token_id: 'test-token-id',
               token_last_used_at: new Date().toISOString(),
             }
@@ -75,6 +81,56 @@ test('accepts capture timestamps within the clock skew allowance', async () => {
 
   assert.equal(response.status, 200)
   assert.equal(putCalls.length, 1)
+})
+
+test('stores UTC and device-local capture metadata', async () => {
+  const { env, putCalls } = createEnvironment({ uploaded: new Date() })
+  const response = await worker.fetch(
+    ingestRequest('2026-09-12T19:21:48+0000.jpg'),
+    env,
+    executionContext,
+  )
+
+  assert.equal(response.status, 200)
+  assert.deepEqual(putCalls[0].options.customMetadata, {
+    capturedAt: '2026-09-12T19:21:48.000Z',
+    capturedAtLocal: '2026-09-13T03:21:48+08:00',
+    timezone: 'Asia/Taipei',
+  })
+})
+
+test('requires a valid IANA capture timezone', async () => {
+  const missing = createEnvironment(null)
+  const missingResponse = await worker.fetch(
+    ingestRequest(filenameAt(-60_000), null),
+    missing.env,
+    executionContext,
+  )
+
+  assert.equal(missingResponse.status, 400)
+  assert.deepEqual(await missingResponse.json(), {
+    error: {
+      code: 'timezone_required',
+      message: 'X-Timezone is required.',
+    },
+  })
+  assert.equal(missing.putCalls.length, 0)
+
+  const invalid = createEnvironment(null)
+  const invalidResponse = await worker.fetch(
+    ingestRequest(filenameAt(-60_000), '+08:00'),
+    invalid.env,
+    executionContext,
+  )
+
+  assert.equal(invalidResponse.status, 400)
+  assert.deepEqual(await invalidResponse.json(), {
+    error: {
+      code: 'timezone_invalid',
+      message: 'X-Timezone must be an IANA time zone, such as Asia/Taipei.',
+    },
+  })
+  assert.equal(invalid.putCalls.length, 0)
 })
 
 test('rejects capture timestamps beyond the clock skew allowance', async () => {

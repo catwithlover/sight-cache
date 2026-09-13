@@ -3,8 +3,10 @@ export type SamplingUnit = 'minute' | 'hour'
 export type FrameRef = {
   key: string
   capturedAt: string
+  capturedAtLocal: string
   capturedAtMs: number
   size: number
+  timezone: string
 }
 
 export type FrameSample = {
@@ -27,6 +29,10 @@ export type SampleFramesOptions = {
 
 const MS_PER_MINUTE = 60_000
 const MS_PER_HOUR = 60 * MS_PER_MINUTE
+const timezonePattern =
+  /^(?:UTC|[A-Za-z][A-Za-z0-9._+-]*(?:\/[A-Za-z0-9._+-]+)+)$/u
+const localTimestampPattern =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/u
 
 export const deviceIdPattern =
   /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/iu
@@ -100,6 +106,58 @@ export const buildImageKey = (deviceId: string, capturedAt: Date) => {
   ].join('')
 }
 
+export const parseFrameMetadata = (
+  metadata: Record<string, string> | undefined,
+) => {
+  const capturedAt = metadata?.capturedAt
+  const capturedAtLocal = metadata?.capturedAtLocal
+  const timezone = metadata?.timezone
+  const capturedAtMs = capturedAt ? Date.parse(capturedAt) : Number.NaN
+  const capturedAtLocalMs = capturedAtLocal
+    ? Date.parse(capturedAtLocal)
+    : Number.NaN
+
+  if (
+    !capturedAt ||
+    !capturedAtLocal ||
+    !timezone ||
+    timezone.length > 64 ||
+    !timezonePattern.test(timezone) ||
+    !localTimestampPattern.test(capturedAtLocal) ||
+    !Number.isFinite(capturedAtMs) ||
+    capturedAtLocalMs !== capturedAtMs
+  ) {
+    return null
+  }
+
+  let timezoneOffset: string | undefined
+
+  try {
+    const timezoneName = new Intl.DateTimeFormat('en', {
+      timeZone: timezone,
+      timeZoneName: 'longOffset',
+    })
+      .formatToParts(new Date(capturedAtMs))
+      .find((part) => part.type === 'timeZoneName')?.value
+
+    timezoneOffset =
+      timezoneName === 'GMT' || timezoneName === 'UTC'
+        ? '+00:00'
+        : timezoneName?.replace(/^GMT/u, '')
+  } catch {
+    return null
+  }
+
+  if (capturedAtLocal.slice(-6) !== timezoneOffset) return null
+
+  return {
+    capturedAt: new Date(capturedAtMs).toISOString(),
+    capturedAtLocal,
+    capturedAtMs,
+    timezone,
+  }
+}
+
 export const listFrames = async (bucket: R2Bucket, prefix: string) => {
   const frames: FrameRef[] = []
   let cursor: string | undefined
@@ -114,19 +172,17 @@ export const listFrames = async (bucket: R2Bucket, prefix: string) => {
     })
 
     for (const object of result.objects) {
-      const capturedAt = object.customMetadata?.capturedAt
-      const capturedAtMs = capturedAt ? Date.parse(capturedAt) : Number.NaN
+      const metadata = parseFrameMetadata(object.customMetadata)
 
-      if (!capturedAt || !Number.isFinite(capturedAtMs)) {
+      if (!metadata) {
         invalidMetadataCount += 1
         continue
       }
 
       frames.push({
         key: object.key,
-        capturedAt: new Date(capturedAtMs).toISOString(),
-        capturedAtMs,
         size: object.size,
+        ...metadata,
       })
     }
 
@@ -135,7 +191,7 @@ export const listFrames = async (bucket: R2Bucket, prefix: string) => {
 
   if (invalidMetadataCount > 0) {
     console.warn(
-      `Skipped ${invalidMetadataCount} frame(s) with invalid capturedAt metadata`,
+      `Skipped ${invalidMetadataCount} frame(s) with invalid time metadata`,
     )
   }
 

@@ -1,6 +1,13 @@
 LOCAL_MCP_BYPASS=true
 LOCAL_MCP_EMAIL=local@sight-cache.test
 MCP_MAX_LOOKBACK_DAYS=14
+MCP_ENABLE_FRAME_DOWNLOAD_URLS=false
+
+# Required only when MCP_ENABLE_FRAME_DOWNLOAD_URLS=true.
+# R2_ACCOUNT_ID=your-cloudflare-account-id
+# R2_BUCKET_NAME=sight-cache
+# R2_ACCESS_KEY_ID=your-read-only-r2-access-key-id
+# R2_SECRET_ACCESS_KEY=your-read-only-r2-secret-access-key
 
 # Only needed when exercising Access JWT verification locally.
 # ACCESS_TEAM_DOMAIN=https://your-team.cloudflareaccess.com

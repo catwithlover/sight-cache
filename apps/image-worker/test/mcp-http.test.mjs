@@ -13,6 +13,26 @@ const executionContext = {
   waitUntil() {},
 }
 
+const toTaipeiTimestamp = (value) =>
+  new Date(Date.parse(value) + 8 * 60 * 60_000)
+    .toISOString()
+    .replace('.000Z', '+08:00')
+
+const frameKeyFor = (deviceId, value) => {
+  const timestamp = new Date(value).toISOString()
+
+  return [
+    'frames',
+    deviceId,
+    timestamp.slice(0, 4),
+    timestamp.slice(5, 7),
+    timestamp.slice(8, 10),
+    timestamp.slice(11, 13),
+    timestamp.slice(14, 16),
+    `${timestamp.replaceAll('-', '').replaceAll(':', '').replace('.000', '')}.jpg`,
+  ].join('/')
+}
+
 const readMcpResponse = async (response) => {
   const text = await response.text()
 
@@ -114,6 +134,7 @@ test('Cloudflare Access protects MCP tool discovery and calls', async (t) => {
     id: '01234567-89ab-4def-8123-456789abcdef',
     name: 'Camera 1',
     last_frame_at: new Date().toISOString(),
+    timezone: 'Asia/Taipei',
   }
   const statement = {
     bind() {
@@ -285,6 +306,39 @@ test('Cloudflare Access protects MCP tool discovery and calls', async (t) => {
       'get_original_frame',
     ],
   )
+
+  const disabledFrameDownloadsResponse = await worker.fetch(
+    mcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 11,
+        method: 'tools/call',
+        params: {
+          name: 'create_original_frame_downloads',
+          arguments: { deviceId: device.id, capturedAts: [] },
+        },
+      },
+      assertion,
+    ),
+    env,
+    executionContext,
+  )
+  const disabledFrameDownloads = await readMcpResponse(
+    disabledFrameDownloadsResponse,
+  )
+  assert.equal(
+    disabledFrameDownloads.error !== undefined ||
+      disabledFrameDownloads.result?.isError === true,
+    true,
+  )
+  assert.match(
+    disabledFrameDownloads.error?.message ??
+      disabledFrameDownloads.result?.content?.[0]?.text ??
+      '',
+    /Tool create_original_frame_downloads not found/u,
+  )
+  assert.equal(disabledFrameDownloads.result?.structuredContent, undefined)
+
   const contactSheetTool = tools.result.tools.find(
     (tool) => tool.name === 'get_contact_sheet',
   )
@@ -301,6 +355,26 @@ test('Cloudflare Access protects MCP tool discovery and calls', async (t) => {
     true,
   )
 
+  const deviceListResponse = await worker.fetch(
+    mcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'tools/call',
+        params: { name: 'list_devices', arguments: {} },
+      },
+      assertion,
+    ),
+    env,
+    executionContext,
+  )
+  assert.equal(deviceListResponse.status, 200)
+  const deviceList = await readMcpResponse(deviceListResponse)
+  assert.equal(
+    deviceList.result.structuredContent.devices[0].timezone,
+    'Asia/Taipei',
+  )
+
   const rangeEndAt = new Date(Math.floor(Date.now() / 60_000) * 60_000)
   const rangeBeginAt = new Date(rangeEndAt.getTime() - 30_000)
   const capturedAt = new Date(rangeBeginAt.getTime() + 5_000).toISOString()
@@ -311,7 +385,11 @@ test('Cloudflare Access protects MCP tool discovery and calls', async (t) => {
           {
             key: 'frame.jpg',
             size: 12_345,
-            customMetadata: { capturedAt },
+            customMetadata: {
+              capturedAt,
+              capturedAtLocal: toTaipeiTimestamp(capturedAt),
+              timezone: 'Asia/Taipei',
+            },
           },
         ],
         truncated: false,
@@ -345,8 +423,10 @@ test('Cloudflare Access protects MCP tool discovery and calls', async (t) => {
   assert.deepEqual(frameList.result.structuredContent.frames, [
     {
       capturedAt,
+      capturedAtLocal: toTaipeiTimestamp(capturedAt),
       byteSize: 12_345,
       offsetMs: 5_000,
+      timezone: 'Asia/Taipei',
     },
   ])
 
@@ -373,8 +453,10 @@ test('Cloudflare Access protects MCP tool discovery and calls', async (t) => {
         targetAt: targetAt.toISOString(),
         slotEndAt: new Date(targetAt.getTime() + 60_000).toISOString(),
         capturedAt: targetAt.toISOString(),
+        capturedAtLocal: toTaipeiTimestamp(targetAt.toISOString()),
         deltaMs: 0,
         status: 'captured',
+        timezone: 'Asia/Taipei',
       }
     }),
   }))
@@ -422,6 +504,21 @@ test('Cloudflare Access protects MCP tool discovery and calls', async (t) => {
       }
     }
 
+    if (key.startsWith(`frames/${device.id}/`)) {
+      return {
+        size: jpeg.byteLength,
+        httpMetadata: { contentType: 'image/jpeg' },
+        customMetadata: {
+          capturedAt,
+          capturedAtLocal: toTaipeiTimestamp(capturedAt),
+          timezone: 'Asia/Taipei',
+        },
+        async arrayBuffer() {
+          return jpeg.buffer
+        },
+      }
+    }
+
     return null
   }
 
@@ -461,5 +558,284 @@ test('Cloudflare Access protects MCP tool discovery and calls', async (t) => {
       data: '/9j/2Q==',
       mimeType: 'image/jpeg',
     },
+  )
+  assert.deepEqual(
+    contactSheet.result.structuredContent.slots[0],
+    sheets[1].slots[0],
+  )
+
+  const originalFrameResponse = await worker.fetch(
+    mcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 5,
+        method: 'tools/call',
+        params: {
+          name: 'get_original_frame',
+          arguments: {
+            deviceId: device.id,
+            capturedAt,
+          },
+        },
+      },
+      assertion,
+    ),
+    env,
+    executionContext,
+  )
+  assert.equal(originalFrameResponse.status, 200)
+  const originalFrame = await readMcpResponse(originalFrameResponse)
+  assert.deepEqual(originalFrame.result.structuredContent, {
+    deviceId: device.id,
+    deviceName: device.name,
+    capturedAt,
+    capturedAtLocal: toTaipeiTimestamp(capturedAt),
+    byteSize: jpeg.byteLength,
+    mimeType: 'image/jpeg',
+    original: true,
+    timezone: 'Asia/Taipei',
+  })
+
+  env.MCP_ENABLE_FRAME_DOWNLOAD_URLS = 'TRUE'
+  const nonExactFlagToolsResponse = await worker.fetch(
+    mcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 6,
+        method: 'tools/list',
+        params: {},
+      },
+      assertion,
+    ),
+    env,
+    executionContext,
+  )
+  const nonExactFlagTools = await readMcpResponse(nonExactFlagToolsResponse)
+  assert.equal(
+    nonExactFlagTools.result.tools.some(
+      ({ name }) => name === 'create_original_frame_downloads',
+    ),
+    false,
+  )
+
+  Object.assign(env, {
+    MCP_ENABLE_FRAME_DOWNLOAD_URLS: 'true',
+    R2_ACCOUNT_ID: '0123456789abcdef0123456789abcdef',
+    R2_BUCKET_NAME: 'sight-cache',
+    R2_ACCESS_KEY_ID: 'test-r2-access-key',
+    R2_SECRET_ACCESS_KEY: 'test-r2-secret-access-key',
+  })
+  const missingCapturedAt = new Date(
+    Date.parse(capturedAt) + 5_000,
+  ).toISOString()
+  const failedCapturedAt = new Date(
+    Date.parse(capturedAt) + 10_000,
+  ).toISOString()
+  env.BUCKET.head = async (key) => {
+    if (key === frameKeyFor(device.id, failedCapturedAt)) {
+      throw new Error('Temporary R2 failure')
+    }
+
+    if (key !== frameKeyFor(device.id, capturedAt)) return null
+
+    return {
+      key,
+      size: jpeg.byteLength,
+      httpMetadata: { contentType: 'image/jpeg' },
+      customMetadata: {
+        capturedAt,
+        capturedAtLocal: toTaipeiTimestamp(capturedAt),
+        timezone: 'Asia/Taipei',
+      },
+    }
+  }
+
+  const enabledToolsResponse = await worker.fetch(
+    mcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 7,
+        method: 'tools/list',
+        params: {},
+      },
+      assertion,
+    ),
+    env,
+    executionContext,
+  )
+  const enabledTools = await readMcpResponse(enabledToolsResponse)
+  const frameDownloadsTool = enabledTools.result.tools.find(
+    ({ name }) => name === 'create_original_frame_downloads',
+  )
+  assert(frameDownloadsTool)
+  assert.equal(
+    frameDownloadsTool.inputSchema.properties.capturedAts.maxItems,
+    20,
+  )
+
+  const frameDownloadsResponse = await worker.fetch(
+    mcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 8,
+        method: 'tools/call',
+        params: {
+          name: 'create_original_frame_downloads',
+          arguments: {
+            deviceId: device.id,
+            capturedAts: [capturedAt, missingCapturedAt, failedCapturedAt],
+          },
+        },
+      },
+      assertion,
+    ),
+    env,
+    executionContext,
+  )
+  assert.equal(
+    frameDownloadsResponse.status,
+    200,
+    await frameDownloadsResponse.clone().text(),
+  )
+  const frameDownloads = await readMcpResponse(frameDownloadsResponse)
+  assert.equal(frameDownloads.result.isError, undefined)
+  assert.equal(
+    frameDownloads.result.content.every(({ type }) => type === 'text'),
+    true,
+  )
+  assert.deepEqual(
+    JSON.parse(frameDownloads.result.content[0].text),
+    frameDownloads.result.structuredContent,
+  )
+  assert.equal(frameDownloads.result.structuredContent.requestedCount, 3)
+  assert.equal(frameDownloads.result.structuredContent.availableCount, 1)
+  assert.equal(frameDownloads.result.structuredContent.unavailableCount, 2)
+  assert.equal(
+    Date.parse(frameDownloads.result.structuredContent.expiresAt) - Date.now() >
+      29 * 60_000,
+    true,
+  )
+
+  const [availableDownload, unavailableDownload, failedDownload] =
+    frameDownloads.result.structuredContent.frames
+  assert.equal(availableDownload.status, 'available')
+  assert.equal(availableDownload.capturedAt, capturedAt)
+  assert.equal(availableDownload.original, true)
+  const downloadUrl = new URL(availableDownload.downloadUrl)
+  assert.equal(
+    downloadUrl.hostname,
+    '0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com',
+  )
+  assert.equal(
+    downloadUrl.pathname,
+    `/${frameKeyFor(device.id, capturedAt)}`.replace(
+      '/frames/',
+      '/sight-cache/frames/',
+    ),
+  )
+  assert.equal(downloadUrl.searchParams.get('X-Amz-Expires'), '1800')
+  assert.match(
+    downloadUrl.searchParams.get('X-Amz-Credential') ?? '',
+    /^test-r2-access-key\/\d{8}\/auto\/s3\/aws4_request$/u,
+  )
+  assert.match(
+    downloadUrl.searchParams.get('X-Amz-Signature') ?? '',
+    /^[0-9a-f]{64}$/u,
+  )
+  assert.deepEqual(unavailableDownload, {
+    capturedAt: missingCapturedAt,
+    status: 'unavailable',
+    error: {
+      code: 'frame_not_found',
+      message: 'No original frame exists at that exact timestamp.',
+    },
+  })
+  assert.deepEqual(failedDownload, {
+    capturedAt: failedCapturedAt,
+    status: 'unavailable',
+    error: {
+      code: 'frame_access_failed',
+      message: 'The frame could not be accessed. Retry the request.',
+    },
+  })
+
+  const duplicateDownloadsResponse = await worker.fetch(
+    mcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 9,
+        method: 'tools/call',
+        params: {
+          name: 'create_original_frame_downloads',
+          arguments: {
+            deviceId: device.id,
+            capturedAts: [capturedAt, toTaipeiTimestamp(capturedAt)],
+          },
+        },
+      },
+      assertion,
+    ),
+    env,
+    executionContext,
+  )
+  const duplicateDownloads = await readMcpResponse(
+    duplicateDownloadsResponse,
+  )
+  assert.equal(duplicateDownloads.result.isError, true)
+  assert.equal(
+    JSON.parse(duplicateDownloads.result.content[0].text).error.code,
+    'captured_at_duplicate',
+  )
+
+  const fractionalTimestampResponse = await worker.fetch(
+    mcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 10,
+        method: 'tools/call',
+        params: {
+          name: 'create_original_frame_downloads',
+          arguments: {
+            deviceId: device.id,
+            capturedAts: [capturedAt.replace('.000Z', '.0001Z')],
+          },
+        },
+      },
+      assertion,
+    ),
+    env,
+    executionContext,
+  )
+  const fractionalTimestamp = await readMcpResponse(
+    fractionalTimestampResponse,
+  )
+  assert.equal(fractionalTimestamp.result.isError, true)
+  assert.equal(
+    JSON.parse(fractionalTimestamp.result.content[0].text).error.code,
+    'captured_at_invalid',
+  )
+
+  delete env.R2_SECRET_ACCESS_KEY
+  const incompleteConfigResponse = await worker.fetch(
+    mcpRequest(
+      {
+        jsonrpc: '2.0',
+        id: 11,
+        method: 'tools/call',
+        params: {
+          name: 'create_original_frame_downloads',
+          arguments: { deviceId: device.id, capturedAts: [capturedAt] },
+        },
+      },
+      assertion,
+    ),
+    env,
+    executionContext,
+  )
+  const incompleteConfig = await readMcpResponse(incompleteConfigResponse)
+  assert.equal(incompleteConfig.result.isError, true)
+  assert.equal(
+    JSON.parse(incompleteConfig.result.content[0].text).error.code,
+    'frame_downloads_not_configured',
   )
 })

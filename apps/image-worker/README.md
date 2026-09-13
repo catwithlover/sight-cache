@@ -48,20 +48,29 @@ Cron: 5 * * * * --> Queue --> hourly contact-sheet builder --> R2
 | `LOCAL_MCP_BYPASS` | Variable | Bypasses Access only for local loopback development |
 | `LOCAL_MCP_EMAIL` | Variable | Identity logged when local authentication is bypassed |
 | `MCP_ALLOWED_ORIGIN_HOSTNAMES` | Variable | Additional comma-separated browser Origin hostnames |
+| `MCP_ENABLE_FRAME_DOWNLOAD_URLS` | Variable | Registers temporary batch download URLs only when exactly `true`; disabled by default |
 | `MCP_MAX_LOOKBACK_DAYS` | Variable | Maximum readable history; defaults to 14 days |
+| `R2_ACCOUNT_ID` / `R2_BUCKET_NAME` | Variable | R2 S3 endpoint values for the account and bucket used by the `BUCKET` binding |
+| `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | Secret | Read-only S3 credentials scoped to the same R2 bucket as the `BUCKET` binding |
 
 ## MCP tools
 
 | Tool | Purpose |
 | --- | --- |
-| `list_devices` | List active devices and their latest upload time |
+| `list_devices` | List active devices, latest upload times, and time zones |
 | `get_contact_sheet` | Return one JPEG contact sheet for a completed minute or hour, including the time and status of each thumbnail |
 | `list_frames` | List exact capture timestamps in an interval of up to five minutes |
 | `get_original_frame` | Return the unmodified JPEG at an exact `capturedAt` timestamp |
+| `create_original_frame_downloads` | When enabled, return JSON with up to 20 original-frame download URLs valid for 30 minutes |
 
 The recommended inspection flow is to call `list_devices`, review every contact
 sheet for the hour, inspect suspicious minutes, list nearby frame timestamps,
 and retrieve only the original frames needed as evidence.
+
+`create_original_frame_downloads` is not registered unless
+`MCP_ENABLE_FRAME_DOWNLOAD_URLS` is exactly `true`. It returns metadata and
+HTTPS GET URLs without embedding image data. Each requested timestamp is
+reported as `available` or `unavailable`.
 
 ## Contact sheets
 
@@ -116,6 +125,13 @@ grants are implemented. In production, every hostname and path that can reach
 
 `LOCAL_MCP_BYPASS` is for loopback local development only and must not be
 configured in production.
+
+Presigned frame URLs are bearer credentials that bypass Access after they are
+issued. Disabling the tool prevents new URLs but does not revoke existing URLs;
+they remain readable until their 30-minute expiry. Revoke the R2 signing
+credential when immediate invalidation is required. R2 presigned URLs use the
+S3 API domain rather than a custom domain, and browser downloads require bucket
+CORS configuration.
 
 ## Routes
 
