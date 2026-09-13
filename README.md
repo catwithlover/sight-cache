@@ -2,6 +2,7 @@
   <img src="docs/assets/logo.svg" alt="Sight Cache" width="180" />
   <h1>Sight Cache</h1>
   <p><em>Give AI agents eyes on the scene and a memory of what happened.</em></p>
+  <p><a href="https://catwithlover.github.io/sight-cache/"><strong>Website</strong></a></p>
   <p>English · <a href="README.zh-TW.md" lang="zh-Hant-TW">繁體中文</a></p>
 </div>
 

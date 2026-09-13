@@ -2,6 +2,7 @@
   <img src="docs/assets/logo.svg" alt="Sight Cache" width="180" />
   <h1>Sight Cache</h1>
   <p><em>給 AI Agent 的監視器之眼與影像記憶。</em></p>
+  <p><a href="https://catwithlover.github.io/sight-cache/"><strong>網站</strong></a></p>
   <p><a href="README.md" lang="en">English</a> · 繁體中文</p>
 </div>
 
