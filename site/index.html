@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Sight Cache gives AI agents a compact, inspectable visual memory of camera history through MCP."
+    />
+    <meta name="theme-color" content="#f5f7f8" />
+    <meta property="og:title" content="Sight Cache | Visual memory for AI agents" />
+    <meta
+      property="og:description"
+      content="A serverless camera history pipeline that turns RTSP captures into compact contact sheets and precise MCP evidence."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://catwithlover.github.io/sight-cache/" />
+    <link rel="canonical" href="https://catwithlover.github.io/sight-cache/" />
+    <link rel="alternate" hreflang="en" href="https://catwithlover.github.io/sight-cache/" />
+    <link
+      rel="alternate"
+      hreflang="zh-Hant"
+      href="https://catwithlover.github.io/sight-cache/zh-TW/"
+    />
+    <link rel="alternate" hreflang="x-default" href="https://catwithlover.github.io/sight-cache/" />
+    <title>Sight Cache | Visual memory for AI agents</title>
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <header class="site-header">
+      <div class="page-shell header-inner">
+        <a class="brand" href="#top" aria-label="Sight Cache home">
+          <img src="assets/logo.svg" alt="" width="48" height="48" />
+          <span>Sight Cache</span>
+        </a>
+
+        <nav class="site-nav" id="site-navigation" data-site-nav aria-label="Primary navigation">
+          <a href="#pipeline">How it works</a>
+          <a href="#tools">MCP tools</a>
+          <a href="#architecture">Architecture</a>
+          <a href="#start">Set up</a>
+        </nav>
+
+        <div class="header-actions">
+          <a class="language-link" href="zh-TW/" lang="zh-Hant" hreflang="zh-Hant">繁中</a>
+          <a
+            class="github-link"
+            href="https://github.com/catwithlover/sight-cache"
+            aria-label="View Sight Cache on GitHub"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.87c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.64-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.6 9.6 0 0 1 12 6.82a9.6 9.6 0 0 1 2.5.34c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.86v2.76c0 .27.18.58.69.48A10 10 0 0 0 12 2Z" />
+            </svg>
+            <span class="github-label">GitHub</span>
+          </a>
+          <button
+            class="menu-toggle"
+            type="button"
+            aria-label="Toggle navigation"
+            aria-controls="site-navigation"
+            aria-expanded="false"
+            data-menu-button
+          >
+            <span class="menu-icon" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <div class="page-shell hero-layout">
+          <div class="hero-copy">
+            <p class="eyebrow">Open-source visual memory</p>
+            <h1 id="hero-title">Give agents the scene, not the whole stream.</h1>
+            <p class="hero-intro">
+              Sight Cache turns RTSP camera history into compact contact sheets, then lets AI agents inspect
+              the exact frames they need through protected, read-only MCP tools.
+            </p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="#start">
+                <span>Set up Sight Cache</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+              </a>
+              <a class="text-link" href="#pipeline">
+                <span>Follow a frame</span>
+                <span aria-hidden="true">↓</span>
+              </a>
+            </div>
+            <p class="hero-note">Self-hosted on your Cloudflare account</p>
+          </div>
+
+          <figure class="memory-figure">
+            <div
+              class="memory-board"
+              role="img"
+              aria-label="A camera hour summarized as a contact sheet, with movement at 10:42 highlighted for an AI agent"
+            >
+              <div class="board-bar" aria-hidden="true">
+                <span class="board-time">10:00–11:00 UTC</span>
+                <span class="board-count">sheet 05 / 06</span>
+              </div>
+              <div class="contact-sheet" aria-hidden="true">
+                <span class="frame"></span>
+                <span class="frame"></span>
+                <span class="frame"></span>
+                <span class="frame"></span>
+                <span class="frame"></span>
+                <span class="frame"></span>
+                <span class="frame"></span>
+                <span class="frame"></span>
+                <span class="frame frame-focus"><span></span></span>
+                <span class="frame"></span>
+                <span class="frame"></span>
+                <span class="frame"></span>
+              </div>
+            </div>
+            <div class="agent-finding" aria-hidden="true">
+              <span class="finding-mark">AI</span>
+              <div>
+                <strong>Movement found at 10:42</strong>
+                <span>Open the original frame for evidence?</span>
+              </div>
+            </div>
+            <figcaption>One hour becomes six quick, inspectable contact sheets.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <aside class="facts" aria-label="Key system facts">
+        <ul class="page-shell fact-list">
+          <li><strong>5 sec</strong><span>Default interval between original captures</span></li>
+          <li><strong>60</strong><span>One-minute samples summarized per completed hour</span></li>
+          <li><strong>4 tools</strong><span>Read-only MCP steps from overview to evidence</span></li>
+        </ul>
+      </aside>
+
+      <section class="section" id="pipeline" aria-labelledby="pipeline-title">
+        <div class="page-shell">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">From camera to context</p>
+              <h2 id="pipeline-title">Keep the evidence. Reduce the looking.</h2>
+            </div>
+            <p>
+              Agents start with a compact hour-level overview, narrow in on a suspicious minute, and retrieve
+              an original only when it adds useful evidence.
+            </p>
+          </div>
+
+          <ol class="flow-list">
+            <li>
+              <span class="flow-number">01</span>
+              <h3>Capture near the camera</h3>
+              <p>The Node.js collector uses FFmpeg to spool timestamped JPEGs and upload them sequentially.</p>
+              <span class="flow-symbol" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 9.5A2.5 2.5 0 0 1 6.5 7h11A2.5 2.5 0 0 1 20 9.5v7a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5Z" /><circle cx="12" cy="13" r="3.5" /><path d="M8 7 9.2 4.8h5.6L16 7" /></svg>
+              </span>
+            </li>
+            <li>
+              <span class="flow-number">02</span>
+              <h3>Store originals at the edge</h3>
+              <p>The Ingest Worker authenticates each device, validates the image, and writes it to R2.</p>
+              <span class="flow-symbol" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M5 6.5C5 5.1 8.1 4 12 4s7 1.1 7 2.5v11c0 1.4-3.1 2.5-7 2.5s-7-1.1-7-2.5Z" /><path d="M5 6.5C5 7.9 8.1 9 12 9s7-1.1 7-2.5M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5" /></svg>
+              </span>
+            </li>
+            <li>
+              <span class="flow-number">03</span>
+              <h3>Summarize complete windows</h3>
+              <p>A scheduled queue builds hourly sheets; short minute-level sheets are created only on demand.</p>
+              <span class="flow-symbol" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M4 10h16M10 4v16M15 10v10" /></svg>
+              </span>
+            </li>
+            <li>
+              <span class="flow-number">04</span>
+              <h3>Inspect through MCP</h3>
+              <p>The Image Worker exposes a stateless, read-only path protected by Cloudflare Access OAuth.</p>
+              <span class="flow-symbol" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 12h5l2-3 3 6 2-3h4" /><path d="M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" /></svg>
+              </span>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="tools-section" id="tools" aria-labelledby="tools-title">
+        <div class="page-shell tools-layout">
+          <div class="tool-copy">
+            <p class="eyebrow">Four read-only tools</p>
+            <h2 id="tools-title">Move from overview to exact evidence.</h2>
+            <p>
+              The inspection path stays deliberate. List devices, scan contact sheets, find nearby timestamps,
+              then open only the original frames that matter.
+            </p>
+            <ul class="tool-list">
+              <li><code>list_devices</code><span>Find active cameras</span></li>
+              <li><code>get_contact_sheet</code><span>Review a minute or hour</span></li>
+              <li><code>list_frames</code><span>Locate exact captures</span></li>
+              <li><code>get_original_frame</code><span>Retrieve unmodified evidence</span></li>
+            </ul>
+          </div>
+
+          <div class="console" aria-label="Example MCP response">
+            <div class="console-bar" aria-hidden="true">
+              <span class="console-dots"><i></i><i></i><i></i></span>
+              <span>get_contact_sheet</span>
+            </div>
+            <pre><code><span class="code-muted">// One compact overview, with exact metadata</span>
+{
+  <span class="code-key">"device"</span>: <span class="code-string">"front-entry"</span>,
+  <span class="code-key">"window"</span>: <span class="code-string">"2026-09-13T10:00:00Z"</span>,
+  <span class="code-key">"sheet"</span>: <span class="code-string">"05"</span>,
+  <span class="code-key">"samples"</span>: [
+    {
+      <span class="code-key">"capturedAt"</span>: <span class="code-string">"2026-09-13T10:42:03Z"</span>,
+      <span class="code-key">"status"</span>: <span class="code-string">"captured"</span>,
+      <span class="code-key">"slot"</span>: 3
+    }
+  ]
+}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="architecture-section" id="architecture" aria-labelledby="architecture-title">
+        <div class="page-shell">
+          <div class="architecture-heading">
+            <div>
+              <p class="eyebrow">A small, separated system</p>
+              <h2 id="architecture-title">Each service does one clear job.</h2>
+            </div>
+            <p>
+              Capture stays close to the camera. Storage and processing run on Cloudflare. Inspection remains
+              behind your Access policy.
+            </p>
+          </div>
+
+          <div class="architecture-map">
+            <article class="architecture-column">
+              <span class="architecture-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 8h16v10H4zM8 8l1.5-3h5L16 8" /><circle cx="12" cy="13" r="3" /></svg>
+              </span>
+              <h3>At the camera</h3>
+              <p>A lightweight collector captures RTSP frames without sending a continuous video stream.</p>
+              <ul class="service-tags"><li>Node.js</li><li>FFmpeg</li><li>Docker</li></ul>
+            </article>
+            <article class="architecture-column">
+              <span class="architecture-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 8.6 4.7 4.7 0 0 0 7 18Z" /><path d="m9 13 2 2 4-5" /></svg>
+              </span>
+              <h3>On Cloudflare</h3>
+              <p>Three Workers authenticate, store, summarize, schedule, and serve the camera history.</p>
+              <ul class="service-tags"><li>Workers</li><li>D1</li><li>R2</li><li>Images</li><li>Queues</li></ul>
+            </article>
+            <article class="architecture-column">
+              <span class="architecture-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z" /><path d="m9 9-2 3 2 3M15 9l2 3-2 3M11 16l2-8" /></svg>
+              </span>
+              <h3>With the agent</h3>
+              <p>Any compatible MCP client can inspect authorized history through a stateless endpoint.</p>
+              <ul class="service-tags"><li>MCP</li><li>Managed OAuth</li><li>read-only</li></ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="privacy-section" aria-labelledby="privacy-title">
+        <div class="page-shell privacy-panel">
+          <div class="privacy-copy">
+            <p class="eyebrow">Private footage stays deliberate</p>
+            <h2 id="privacy-title">Protection is part of the pipeline.</h2>
+            <p>
+              Sight Cache provides the controls, while you retain ownership of the account, Access policies,
+              storage lifecycle, and every camera credential.
+            </p>
+          </div>
+          <ul class="privacy-list">
+            <li><strong>Protect admin and MCP routes</strong> with matching Cloudflare Access applications.</li>
+            <li><strong>Store token hashes only;</strong> complete collector tokens appear once when issued.</li>
+            <li><strong>Set an R2 lifecycle rule</strong> that matches how long your footage should remain.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="start-section" id="start" aria-labelledby="start-title">
+        <div class="page-shell start-layout">
+          <div class="start-copy">
+            <p class="eyebrow">Bring one camera online</p>
+            <h2 id="start-title">Start with the repository and a clear retention plan.</h2>
+            <p>
+              Provision the Cloudflare resources, deploy the three Workers, then run one collector near each
+              RTSP camera. The guides document every binding and environment value.
+            </p>
+            <ul class="requirements" aria-label="Requirements">
+              <li>Node.js 24.19+</li>
+              <li>FFmpeg or Docker</li>
+              <li>Cloudflare Workers Paid</li>
+            </ul>
+          </div>
+
+          <div class="setup-panel">
+            <p class="setup-label">Clone the project</p>
+            <div class="command-box">
+              <code>git clone https://github.com/catwithlover/sight-cache.git</code>
+              <button
+                class="copy-button"
+                type="button"
+                data-copy="git clone https://github.com/catwithlover/sight-cache.git"
+                data-copy-label="Copy"
+                data-copied-label="Copied"
+                data-success-message="Clone command copied."
+                data-error-message="Select the command and copy it manually."
+                data-copied="false"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <p class="copy-status" role="status" aria-live="polite" data-copy-status></p>
+            <ol class="setup-steps">
+              <li><span>1</span><div>Provision D1, R2, Queues, Images, and two Access applications.</div></li>
+              <li><span>2</span><div>Configure and deploy the Admin, Ingest, and Image Workers.</div></li>
+              <li><span>3</span><div>Create a device, save its one-time token, and start the collector.</div></li>
+            </ol>
+            <div class="setup-actions">
+              <a class="button button-primary" href="https://github.com/catwithlover/sight-cache#getting-started">Read the setup guide</a>
+              <a class="text-link" href="https://github.com/catwithlover/sight-cache/tree/main/apps">Browse components <span aria-hidden="true">↗</span></a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="page-shell footer-layout">
+        <div class="footer-brand">
+          <img src="assets/logo.svg" alt="" width="48" height="48" />
+          <div>
+            <strong>Sight Cache</strong>
+            <p>Inspectable camera memory for AI agents.</p>
+          </div>
+        </div>
+        <div class="footer-meta">
+          <p class="footer-note">Built on Cloudflare. Connected through MCP.</p>
+          <p class="footer-links">
+            <a href="https://github.com/catwithlover/sight-cache">Source</a>
+            <a href="https://github.com/catwithlover/sight-cache#security-and-retention">Security</a>
+            <a href="zh-TW/" lang="zh-Hant" hreflang="zh-Hant">繁體中文</a>
+          </p>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

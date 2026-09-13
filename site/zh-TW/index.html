@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Sight Cache 透過 MCP，為 AI Agent 提供精簡且可檢視的監視器影像記憶。"
+    />
+    <meta name="theme-color" content="#f5f7f8" />
+    <meta property="og:title" content="Sight Cache | 給 AI Agent 的影像記憶" />
+    <meta
+      property="og:description"
+      content="將 RTSP 監視器畫面整理成精簡縮圖總覽，讓 AI Agent 透過 MCP 找到精確影像證據。"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="zh_TW" />
+    <meta property="og:url" content="https://catwithlover.github.io/sight-cache/zh-TW/" />
+    <link rel="canonical" href="https://catwithlover.github.io/sight-cache/zh-TW/" />
+    <link rel="alternate" hreflang="en" href="https://catwithlover.github.io/sight-cache/" />
+    <link
+      rel="alternate"
+      hreflang="zh-Hant"
+      href="https://catwithlover.github.io/sight-cache/zh-TW/"
+    />
+    <link rel="alternate" hreflang="x-default" href="https://catwithlover.github.io/sight-cache/" />
+    <title>Sight Cache | 給 AI Agent 的影像記憶</title>
+    <link rel="icon" href="../assets/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../styles.css" />
+    <script src="../script.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">跳至主要內容</a>
+
+    <header class="site-header">
+      <div class="page-shell header-inner">
+        <a class="brand" href="#top" aria-label="Sight Cache 首頁">
+          <img src="../assets/logo.svg" alt="" width="48" height="48" />
+          <span>Sight Cache</span>
+        </a>
+
+        <nav class="site-nav" id="site-navigation" data-site-nav aria-label="主要導覽">
+          <a href="#pipeline">運作方式</a>
+          <a href="#tools">MCP 工具</a>
+          <a href="#architecture">系統架構</a>
+          <a href="#start">開始設定</a>
+        </nav>
+
+        <div class="header-actions">
+          <a class="language-link" href="../" lang="en" hreflang="en">EN</a>
+          <a
+            class="github-link"
+            href="https://github.com/catwithlover/sight-cache"
+            aria-label="在 GitHub 查看 Sight Cache"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.87c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.64-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.6 9.6 0 0 1 12 6.82a9.6 9.6 0 0 1 2.5.34c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.86v2.76c0 .27.18.58.69.48A10 10 0 0 0 12 2Z" />
+            </svg>
+            <span class="github-label">GitHub</span>
+          </a>
+          <button
+            class="menu-toggle"
+            type="button"
+            aria-label="切換導覽選單"
+            aria-controls="site-navigation"
+            aria-expanded="false"
+            data-menu-button
+          >
+            <span class="menu-icon" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <div class="page-shell hero-layout">
+          <div class="hero-copy">
+            <p class="eyebrow">開源影像記憶</p>
+            <h1 id="hero-title">給 Agent 現場脈絡，不必搬走整段串流。</h1>
+            <p class="hero-intro">
+              Sight Cache 將 RTSP 監視器歷史整理成精簡的縮圖總覽，再讓 AI Agent 透過受保護的唯讀
+              MCP 工具，只檢視真正需要的精確畫面。
+            </p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="#start">
+                <span>開始設定 Sight Cache</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+              </a>
+              <a class="text-link" href="#pipeline">
+                <span>跟著影格走一遍</span>
+                <span aria-hidden="true">↓</span>
+              </a>
+            </div>
+            <p class="hero-note">自行部署於你的 Cloudflare 帳號</p>
+          </div>
+
+          <figure class="memory-figure">
+            <div
+              class="memory-board"
+              role="img"
+              aria-label="一小時的監視器畫面被整理成縮圖總覽，其中 10 點 42 分的移動事件已為 AI Agent 標示"
+            >
+              <div class="board-bar" aria-hidden="true">
+                <span class="board-time">10:00–11:00 UTC</span>
+                <span class="board-count">總覽 05 / 06</span>
+              </div>
+              <div class="contact-sheet" aria-hidden="true">
+                <span class="frame"></span>
+                <span class="frame"></span>
+                <span class="frame"></span>
+                <span class="frame"></span>
+                <span class="frame"></span>
+                <span class="frame"></span>
+                <span class="frame"></span>
+                <span class="frame"></span>
+                <span class="frame frame-focus"><span></span></span>
+                <span class="frame"></span>
+                <span class="frame"></span>
+                <span class="frame"></span>
+              </div>
+            </div>
+            <div class="agent-finding" aria-hidden="true">
+              <span class="finding-mark">AI</span>
+              <div>
+                <strong>10:42 發現移動</strong>
+                <span>要開啟原始影格確認證據嗎？</span>
+              </div>
+            </div>
+            <figcaption>將一小時整理成六張可快速檢視的縮圖總覽。</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <aside class="facts" aria-label="系統重點">
+        <ul class="page-shell fact-list">
+          <li><strong>5 秒</strong><span>原始影格的預設擷取間隔</span></li>
+          <li><strong>60 格</strong><span>每個完整小時的一分鐘取樣數</span></li>
+          <li><strong>4 項工具</strong><span>從總覽走到證據的唯讀 MCP 流程</span></li>
+        </ul>
+      </aside>
+
+      <section class="section" id="pipeline" aria-labelledby="pipeline-title">
+        <div class="page-shell">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">從攝影機到脈絡</p>
+              <h2 id="pipeline-title">保留證據，減少逐格尋找。</h2>
+            </div>
+            <p>
+              Agent 先看精簡的小時總覽，再縮小到可疑的分鐘區間；只有在能補足證據時，才讀取原始影格。
+            </p>
+          </div>
+
+          <ol class="flow-list">
+            <li>
+              <span class="flow-number">01</span>
+              <h3>在攝影機附近擷取</h3>
+              <p>Node.js Collector 使用 FFmpeg 暫存帶有時間戳的 JPEG，再依序上傳。</p>
+              <span class="flow-symbol" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 9.5A2.5 2.5 0 0 1 6.5 7h11A2.5 2.5 0 0 1 20 9.5v7a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5Z" /><circle cx="12" cy="13" r="3.5" /><path d="M8 7 9.2 4.8h5.6L16 7" /></svg>
+              </span>
+            </li>
+            <li>
+              <span class="flow-number">02</span>
+              <h3>在邊緣儲存原始畫面</h3>
+              <p>Ingest Worker 驗證設備與影像內容，再將原始畫面寫入 R2。</p>
+              <span class="flow-symbol" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M5 6.5C5 5.1 8.1 4 12 4s7 1.1 7 2.5v11c0 1.4-3.1 2.5-7 2.5s-7-1.1-7-2.5Z" /><path d="M5 6.5C5 7.9 8.1 9 12 9s7-1.1 7-2.5M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5" /></svg>
+              </span>
+            </li>
+            <li>
+              <span class="flow-number">03</span>
+              <h3>整理已完成的時間區間</h3>
+              <p>排程 Queue 建立每小時總覽；短分鐘總覽則只在真正查詢時建立。</p>
+              <span class="flow-symbol" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M4 10h16M10 4v16M15 10v10" /></svg>
+              </span>
+            </li>
+            <li>
+              <span class="flow-number">04</span>
+              <h3>透過 MCP 檢視</h3>
+              <p>Image Worker 提供由 Cloudflare Access OAuth 保護、無狀態且唯讀的檢視路徑。</p>
+              <span class="flow-symbol" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 12h5l2-3 3 6 2-3h4" /><path d="M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" /></svg>
+              </span>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="tools-section" id="tools" aria-labelledby="tools-title">
+        <div class="page-shell tools-layout">
+          <div class="tool-copy">
+            <p class="eyebrow">四項唯讀工具</p>
+            <h2 id="tools-title">從總覽一路找到精確證據。</h2>
+            <p>
+              檢視步驟保持明確：列出設備、掃過縮圖總覽、找到鄰近時間戳，最後只開啟重要的原始畫面。
+            </p>
+            <ul class="tool-list">
+              <li><code>list_devices</code><span>找出啟用中的攝影機</span></li>
+              <li><code>get_contact_sheet</code><span>檢視一分鐘或一小時</span></li>
+              <li><code>list_frames</code><span>找出精確拍攝時間</span></li>
+              <li><code>get_original_frame</code><span>取得未修改的原始證據</span></li>
+            </ul>
+          </div>
+
+          <div class="console" aria-label="MCP 回應範例">
+            <div class="console-bar" aria-hidden="true">
+              <span class="console-dots"><i></i><i></i><i></i></span>
+              <span>get_contact_sheet</span>
+            </div>
+            <pre><code><span class="code-muted">// 一份精簡總覽，附帶精確影格資訊</span>
+{
+  <span class="code-key">"device"</span>: <span class="code-string">"front-entry"</span>,
+  <span class="code-key">"window"</span>: <span class="code-string">"2026-09-13T10:00:00Z"</span>,
+  <span class="code-key">"sheet"</span>: <span class="code-string">"05"</span>,
+  <span class="code-key">"samples"</span>: [
+    {
+      <span class="code-key">"capturedAt"</span>: <span class="code-string">"2026-09-13T10:42:03Z"</span>,
+      <span class="code-key">"status"</span>: <span class="code-string">"captured"</span>,
+      <span class="code-key">"slot"</span>: 3
+    }
+  ]
+}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="architecture-section" id="architecture" aria-labelledby="architecture-title">
+        <div class="page-shell">
+          <div class="architecture-heading">
+            <div>
+              <p class="eyebrow">小而分工清楚的系統</p>
+              <h2 id="architecture-title">每個服務只負責一件明確的事。</h2>
+            </div>
+            <p>
+              擷取留在攝影機附近，儲存與處理交給 Cloudflare，而檢視流程始終由你的 Access policy 保護。
+            </p>
+          </div>
+
+          <div class="architecture-map">
+            <article class="architecture-column">
+              <span class="architecture-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 8h16v10H4zM8 8l1.5-3h5L16 8" /><circle cx="12" cy="13" r="3" /></svg>
+              </span>
+              <h3>攝影機端</h3>
+              <p>輕量 Collector 擷取 RTSP 影格，不必持續將完整視訊串流送上雲端。</p>
+              <ul class="service-tags"><li>Node.js</li><li>FFmpeg</li><li>Docker</li></ul>
+            </article>
+            <article class="architecture-column">
+              <span class="architecture-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 8.6 4.7 4.7 0 0 0 7 18Z" /><path d="m9 13 2 2 4-5" /></svg>
+              </span>
+              <h3>Cloudflare 上</h3>
+              <p>三個 Worker 負責驗證、儲存、整理、排程，以及提供影像歷史。</p>
+              <ul class="service-tags"><li>Workers</li><li>D1</li><li>R2</li><li>Images</li><li>Queues</li></ul>
+            </article>
+            <article class="architecture-column">
+              <span class="architecture-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z" /><path d="m9 9-2 3 2 3M15 9l2 3-2 3M11 16l2-8" /></svg>
+              </span>
+              <h3>Agent 端</h3>
+              <p>任何相容的 MCP Client 都能經由無狀態 endpoint 檢視已授權的歷史。</p>
+              <ul class="service-tags"><li>MCP</li><li>Managed OAuth</li><li>唯讀</li></ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="privacy-section" aria-labelledby="privacy-title">
+        <div class="page-shell privacy-panel">
+          <div class="privacy-copy">
+            <p class="eyebrow">謹慎處理私人畫面</p>
+            <h2 id="privacy-title">保護機制是管線的一部分。</h2>
+            <p>
+              Sight Cache 提供必要控制；Cloudflare 帳號、Access policy、儲存生命週期，以及每組攝影機憑證仍由你掌握。
+            </p>
+          </div>
+          <ul class="privacy-list">
+            <li><strong>保護管理與 MCP 路由：</strong>分別設定相符的 Cloudflare Access Application。</li>
+            <li><strong>只儲存 Token 雜湊：</strong>完整 Collector Token 僅在核發時顯示一次。</li>
+            <li><strong>設定 R2 lifecycle rule：</strong>讓影像保留時間符合你的實際需求。</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="start-section" id="start" aria-labelledby="start-title">
+        <div class="page-shell start-layout">
+          <div class="start-copy">
+            <p class="eyebrow">讓第一台攝影機上線</p>
+            <h2 id="start-title">從 repository 與明確的保留政策開始。</h2>
+            <p>
+              建立 Cloudflare 資源、部署三個 Worker，再於每台 RTSP 攝影機附近執行一個 Collector。文件已列出所有 binding 與環境變數。
+            </p>
+            <ul class="requirements" aria-label="系統需求">
+              <li>Node.js 24.19+</li>
+              <li>FFmpeg 或 Docker</li>
+              <li>Cloudflare Workers Paid</li>
+            </ul>
+          </div>
+
+          <div class="setup-panel">
+            <p class="setup-label">Clone 專案</p>
+            <div class="command-box">
+              <code>git clone https://github.com/catwithlover/sight-cache.git</code>
+              <button
+                class="copy-button"
+                type="button"
+                data-copy="git clone https://github.com/catwithlover/sight-cache.git"
+                data-copy-label="複製"
+                data-copied-label="已複製"
+                data-success-message="已複製 clone 指令。"
+                data-error-message="請選取指令後手動複製。"
+                data-copied="false"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></svg>
+                <span>複製</span>
+              </button>
+            </div>
+            <p class="copy-status" role="status" aria-live="polite" data-copy-status></p>
+            <ol class="setup-steps">
+              <li><span>1</span><div>建立 D1、R2、Queues、Images，以及兩個 Access Application。</div></li>
+              <li><span>2</span><div>設定並部署 Admin、Ingest 與 Image Worker。</div></li>
+              <li><span>3</span><div>建立設備、保存只顯示一次的 Token，再啟動 Collector。</div></li>
+            </ol>
+            <div class="setup-actions">
+              <a class="button button-primary" href="https://github.com/catwithlover/sight-cache/blob/main/README.zh-TW.md#開始使用">閱讀設定指南</a>
+              <a class="text-link" href="https://github.com/catwithlover/sight-cache/tree/main/apps">瀏覽各元件 <span aria-hidden="true">↗</span></a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="page-shell footer-layout">
+        <div class="footer-brand">
+          <img src="../assets/logo.svg" alt="" width="48" height="48" />
+          <div>
+            <strong>Sight Cache</strong>
+            <p>給 AI Agent 的可檢視監視器記憶。</p>
+          </div>
+        </div>
+        <div class="footer-meta">
+          <p class="footer-note">建構於 Cloudflare，透過 MCP 連接。</p>
+          <p class="footer-links">
+            <a href="https://github.com/catwithlover/sight-cache">原始碼</a>
+            <a href="https://github.com/catwithlover/sight-cache/blob/main/README.zh-TW.md#安全性與保留政策">安全性</a>
+            <a href="../" lang="en" hreflang="en">English</a>
+          </p>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
