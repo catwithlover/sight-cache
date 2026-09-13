@@ -22,6 +22,8 @@ RTSP 攝影機
 
 - FFmpeg 透過 RTSP/TCP 連線，依設定的間隔擷取 JPEG；預設為每五秒一張，且
   不處理音訊。
+- 若 RTSP 連線停止產生畫面，Collector 會終止卡住的 FFmpeg process 並自動
+  重新連線。
 
 ## 系統需求
 

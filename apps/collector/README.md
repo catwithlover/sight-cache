@@ -22,6 +22,8 @@ RTSP camera
 
 - FFmpeg connects over RTSP/TCP and captures one JPEG at the configured
   interval, which defaults to five seconds, without audio.
+- If the RTSP connection stops producing frames, the Collector terminates the
+  stalled FFmpeg process and reconnects automatically.
 
 ## Requirements
 
